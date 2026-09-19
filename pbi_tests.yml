@@ -1,0 +1,60 @@
+version: 1
+
+assertions:
+  # ==============================================================================
+  # 1. STORAGE & ARCHITECTURE
+  # ==============================================================================
+
+  - name: "Arch: No calculated columns in financials table"
+    type: no_calculated_columns
+    table: "financials"
+
+  - name: "Arch: Block auto date/time hidden tables"
+    type: no_auto_date_tables
+
+  - name: "Arch: Prevent default aggregation (auto-sum) on Year column"
+    type: column_rule
+    table: "financials"
+    column: "Year"
+    summarize_by: "none"
+
+  # ==============================================================================
+  # 2. DAX LOGIC CONTRACTS
+  # ==============================================================================
+
+  - name: "DAX: Core sales measure must exist"
+    type: measure_exists
+    measure: "[Total Sales]"
+
+  - name: "DAX: Safe division required for all ratio and margin metrics"
+    type: dax_rule
+    measures_matching: ["*Margin*", "*Ratio*", "*%*"]
+    must_call: "DIVIDE"
+
+  - name: "DAX: Forbid raw slash division anti-pattern"
+    type: dax_rule
+    measure: "[Profit Margin %]"
+    forbid_operator: "/"
+
+  - name: "DAX: Complex metrics must reference base measures (DRY)"
+    type: dax_rule
+    measure: "[Gross Profit]"
+    references: ["[Total Sales]", "[Total COGS]"]
+
+  # ==============================================================================
+  # 3. GOVERNANCE & FORMATTING
+  # ==============================================================================
+
+  - name: "Gov: Financial measures must have currency format strings"
+    type: measure_format
+    measures: ["[Total Sales]", "[Total COGS]", "[Gross Profit]"]
+    format: "currency"
+
+  - name: "Gov: Percentage measures must specify percentage formatting"
+    type: measure_format
+    measures_matching: ["*%*", "*Margin*"]
+    format: "percentage"
+
+  - name: "Gov: Enforce clean naming conventions (no technical prefixes)"
+    type: measure_naming
+    forbid_prefixes: ["m_", "meas_", "calc_"]
