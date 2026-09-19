@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pbi-guard"
-version = "0.1.0"
-description = "Lightweight CI/CD assertion and logic tester for Power BI TMDL models"
+version = "0.2.0"
+description = "Power BI TMDL Static Analysis and Contract Testing Runner"
 readme = "README.md"
-authors = [{ name = "patens" }]
+requires-python = ">=3.9"
 dependencies = [
     "pyyaml>=6.0",
 ]
 
 [project.scripts]
-pbi-guard = "main:main"
+pbi-guard = "pbi_guard.cli:main"
