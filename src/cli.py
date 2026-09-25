@@ -1,6 +1,6 @@
 import argparse
-import sys
 from pathlib import Path
+import sys
 import yaml
 
 from .formatter import fmt
@@ -11,7 +11,7 @@ from .runner import run_suite
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pbi-guard",
-        description="Power BI TMDL Static Analysis and Contract Testing Runner."
+        description="Power BI TMDL Static Analysis and Contract Testing Runner.",
     )
     parser.add_argument(
         "-c", "--config", type=Path, default=Path("pbi_tests.yml"), help="Path to YAML test config file"
@@ -21,6 +21,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Display verbose pass details"
+    )
+    parser.add_argument(
+        "--export-report",
+        "--export-audit",
+        dest="export_report",
+        type=Path,
+        help="Export an audit/UAT sign-off report file (.md, .json, or .html)",
     )
     return parser
 
@@ -50,9 +57,12 @@ def main() -> None:
             sys.exit(2)
         model_input = config_path.parent / cfg_model
 
+    report_arg = args.export_report or config.get("export_report") or config.get("report_path")
+    report_path = Path(report_arg) if report_arg else None
+
     try:
         model = parse_tmdl_directory(model_input)
-        success = run_suite(model, config, verbose=args.verbose)
+        success = run_suite(model, config, verbose=args.verbose, report_path=report_path)
         sys.exit(0 if success else 1)
     except FileNotFoundError as fnf:
         print(f"{fmt.RED}Path Error:{fmt.RESET} {fnf}", file=sys.stderr)

@@ -36,3 +36,5 @@ class AssertionResult:
     actual: Optional[str] = None
     reason: Optional[str] = None
     is_error: bool = False
+    rule_type: Optional[str] = None
+    target: Optional[str] = None

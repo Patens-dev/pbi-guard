@@ -19,7 +19,7 @@ assertions:
     summarize_by: "none"
 
   # ==============================================================================
-  # 2. DAX LOGIC CONTRACTS
+  # 2. DAX LOGIC CONTRACTS & FORMULA PINNING
   # ==============================================================================
 
   - name: "DAX: Core sales measure must exist"
@@ -41,8 +41,37 @@ assertions:
     measure: "[Gross Profit]"
     references: ["[Total Sales]", "[Total COGS]"]
 
+  - name: "Contract: Gross Profit formula definition is pinned"
+    type: dax_exact
+    measure: "[Gross Profit]"
+    expected: "[Total Sales] - [Total COGS]"
+
+  - name: "DAG: Enforce metric dependency hierarchy for Profit Margin"
+    type: dax_dependency_chain
+    measure: "[Profit Margin %]"
+    must_depend_on:
+      - "[Gross Profit]"
+      - "[Total Sales]"
+
   # ==============================================================================
-  # 3. GOVERNANCE & FORMATTING
+  # 3. INTEGRITY & ANTI-CHEAT (MAGIC NUMBERS & COLUMN SCOPING)
+  # ==============================================================================
+
+  - name: "Integrity: No hardcoded scalar adjustments or magic numbers in financial KPIs"
+    type: dax_rule
+    measures_matching: ["*Sales*", "*Profit*", "*COGS*"]
+    forbid_raw_numeric_literals: true
+    allowed_literals: [0, 1]
+
+  - name: "Governance: Ratio and margin metrics must not query raw fact columns directly"
+    type: column_usage_rule
+    measures_matching: ["*Margin*", "*Ratio*", "*%*"]
+    forbid_column_references:
+      - "financials[Sales]"
+      - "financials[COGS]"
+
+  # ==============================================================================
+  # 4. GOVERNANCE & FORMATTING
   # ==============================================================================
 
   - name: "Gov: Financial measures must have currency format strings"
