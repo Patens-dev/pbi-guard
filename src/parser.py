@@ -17,6 +17,16 @@ def resolve_tmdl_directory(target_path: Path) -> Path:
     if target.is_dir():
         if (target / "definition").exists():
             return target / "definition"
+        # Check if directory contains a *.SemanticModel folder
+        sm_candidates = list(target.glob("*.SemanticModel/definition")) or list(target.glob("*.SemanticModel"))
+        if sm_candidates:
+            return sm_candidates[0]
+        # Check subdirectories
+        for sub in target.iterdir():
+            if sub.is_dir() and sub.name.endswith(".SemanticModel"):
+                if (sub / "definition").exists():
+                    return sub / "definition"
+                return sub
         return target
     return target
 
@@ -29,34 +39,52 @@ def parse_tmdl_directory(model_dir: Path) -> SemanticModel:
         raise FileNotFoundError(f"No .tmdl files found in '{resolved_dir}'.")
 
     model = SemanticModel()
-    table_pattern = re.compile(r"^\s*table\s+(?:'([^']+)'|\"([^\"]+)\"|([^\s\r\n]+))", re.MULTILINE)
+    table_pattern = re.compile(r"^\s*table\s+(?:'([^']+)'|\"([^\"]+)\"|([^\s\r\n]+))")
     col_pattern = re.compile(r"^\s*column\s+(?:'([^']+)'|\"([^\"]+)\"|([^\s=\r\n]+))(?:\s*=\s*(.*))?")
     measure_pattern = re.compile(r"^\s*measure\s+(?:'([^']+)'|\"([^\"]+)\"|([^\s=\r\n]+))\s*=\s*(.*)")
+    partition_pattern = re.compile(r"^\s*partition\s+(?:'([^']+)'|\"([^\"]+)\"|([^\s=\r\n]+))")
 
     for file_path in tmdl_files:
-        content = file_path.read_text(encoding="utf-8")
+        # Use utf-8-sig to automatically strip Windows/PBI UTF-8 BOM headers (\ufeff)
+        content = file_path.read_text(encoding="utf-8-sig")
         lines = content.splitlines()
 
         current_table: Optional[str] = None
         current_column: Optional[Column] = None
         current_measure: Optional[Measure] = None
 
-        table_match = table_pattern.search(content)
-        if table_match and "table " in lines[0]:
-            groups = table_match.groups()
-            current_table = (groups[0] or groups[1] or groups[2]).strip()
-            if current_table not in model.tables:
-                model.tables.append(current_table)
-                model.columns[current_table] = {}
-                model.calculated_columns[current_table] = []
-
         i = 0
         while i < len(lines):
             line = lines[i]
             stripped = line.strip()
 
+            if not stripped or stripped.startswith("///"):
+                i += 1
+                continue
+
+            # 1. Table declaration
+            t_match = table_pattern.match(line)
+            if t_match:
+                g = t_match.groups()
+                current_table = (g[0] or g[1] or g[2]).strip()
+                if current_table not in model.tables:
+                    model.tables.append(current_table)
+                    model.columns[current_table] = {}
+                    model.calculated_columns[current_table] = []
+                current_column = None
+                current_measure = None
+                i += 1
+                continue
+
             if current_table:
-                # Column parsing
+                # 2. Partition boundary (stops column/measure property bleeding)
+                if partition_pattern.match(line):
+                    current_column = None
+                    current_measure = None
+                    i += 1
+                    continue
+
+                # 3. Column parsing
                 c_match = col_pattern.match(line)
                 if c_match:
                     g = c_match.groups()
@@ -70,7 +98,7 @@ def parse_tmdl_directory(model_dir: Path) -> SemanticModel:
                     i += 1
                     continue
 
-                # Measure parsing
+                # 4. Measure parsing
                 m_match = measure_pattern.match(line)
                 if m_match:
                     g = m_match.groups()
@@ -97,7 +125,7 @@ def parse_tmdl_directory(model_dir: Path) -> SemanticModel:
                                 i -= 1
                                 break
                             if re.match(r"^\s*(measure|column|table|partition)\b", nxt) or \
-                               re.match(r"^\s*(formatString|displayFolder|description|lineageTag)\s*:", nxt):
+                               re.match(r"^\s*(formatString|displayFolder|description|lineageTag)\s*[:=]", nxt):
                                 i -= 1
                                 break
                             expr_lines.append(nxt.strip())
@@ -112,14 +140,17 @@ def parse_tmdl_directory(model_dir: Path) -> SemanticModel:
                     i += 1
                     continue
 
-                # Property assignments
-                if current_column and ":" in stripped:
-                    k, v = stripped.split(":", 1)
-                    current_column.properties[k.strip()] = v.strip()
+                # 5. Property assignments (supports ':' and '=' syntax)
+                separator = ":" if ":" in stripped else ("=" if "=" in stripped else None)
+                if separator:
+                    k, v = stripped.split(separator, 1)
+                    prop_key = k.strip()
+                    prop_val = v.strip().strip('"\'')
 
-                if current_measure and ":" in stripped:
-                    k, v = stripped.split(":", 1)
-                    current_measure.properties[k.strip()] = v.strip().strip('"\'')
+                    if current_column:
+                        current_column.properties[prop_key] = prop_val
+                    elif current_measure:
+                        current_measure.properties[prop_key] = prop_val
 
             i += 1
 

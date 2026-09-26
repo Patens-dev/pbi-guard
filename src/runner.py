@@ -49,6 +49,7 @@ def run_suite(
                 res.target = (
                     item.get("measure")
                     or item.get("table")
+                    or item.get("column")
                     or item.get("measures_matching")
                     or item.get("table_pattern")
                 )

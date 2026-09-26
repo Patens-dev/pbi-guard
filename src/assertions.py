@@ -1,7 +1,7 @@
 import re
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-from .models import AssertionResult, Measure, SemanticModel
+from .models import AssertionResult, Column, Measure, SemanticModel
 from .utils import (
     clean_measure_name,
     extract_column_references,
@@ -22,13 +22,42 @@ def register(*type_names: str):
     return decorator
 
 
+def _get_format_string(properties: Dict[str, str]) -> str:
+    """Retrieves format string or format hint across case variations."""
+    for k, v in properties.items():
+        if k.lower() in ("formatstring", "format_string", "format"):
+            return v
+    # Check Power BI annotation format hints
+    for k, v in properties.items():
+        if "formathint" in k.lower() and "currency" in v.lower():
+            return "currency"
+    return ""
+
+
+def _get_property(properties: Dict[str, str], target_key: str, default: str = "") -> str:
+    """Case-insensitive property lookup."""
+    target_clean = target_key.lower()
+    for k, v in properties.items():
+        if k.lower() == target_clean:
+            return v
+    return default
+
+
+def _find_column_in_model(target: str, model: SemanticModel) -> Optional[str]:
+    c_clean = clean_measure_name(target).lower()
+    for t_name, cols in model.columns.items():
+        for c_name in cols.keys():
+            if c_name.lower() == c_clean:
+                return f"{t_name}[{c_name}]"
+    return None
+
+
 def _resolve_measure_dependencies(
     measure_name: str,
     model: SemanticModel,
     visited: Optional[Set[str]] = None,
     transitive: bool = True,
 ) -> Set[str]:
-    """Performs DAG traversal to resolve direct and transitive measure dependencies."""
     if visited is None:
         visited = set()
 
@@ -59,6 +88,273 @@ def _resolve_measure_dependencies(
     return all_deps
 
 
+# ==============================================================================
+# 1. ARCHITECTURE & TABLE ASSERTIONS
+# ==============================================================================
+
+@register("no_calculated_columns", "no_calc_columns")
+def assert_no_calculated_columns(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "No Calculated Columns")
+    table_filter = rule.get("table") or rule.get("tables") or rule.get("table_pattern", "*")
+
+    violations = [
+        f"{t_name}[{c}]"
+        for t_name, cols in model.calculated_columns.items()
+        if match_wildcards(t_name, table_filter)
+        for c in cols
+    ]
+
+    if violations:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"0 calculated columns in '{table_filter}'",
+            actual=f"Found {len(violations)}: {', '.join(violations)}",
+            rule_type="no_calculated_columns",
+            target=table_filter,
+        )
+    return AssertionResult(name=name, passed=True, rule_type="no_calculated_columns", target=table_filter)
+
+
+@register("no_auto_date_tables")
+def assert_no_auto_date_tables(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "Auto Date/Time Disabled")
+    auto_tables = [t for t in model.tables if t.lower().startswith(("localdatetable_", "datetabletemplate_"))]
+    if auto_tables:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected="Auto Date/Time turned off in file options",
+            actual=f"Found {len(auto_tables)} hidden local date table(s): {', '.join(auto_tables)}",
+            rule_type="no_auto_date_tables",
+        )
+    return AssertionResult(name=name, passed=True, rule_type="no_auto_date_tables")
+
+
+# ==============================================================================
+# 2. COLUMN ASSERTIONS
+# ==============================================================================
+
+@register("column_naming", "column_forbidden_pattern")
+def assert_column_naming(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "Column Naming Rule")
+    table_filter = rule.get("table") or rule.get("table_pattern", "*")
+    forbid_prefixes = rule.get("forbid_prefixes", [])
+    forbid_patterns = rule.get("forbid_patterns", [])
+
+    violations = []
+    for t_name, cols in model.columns.items():
+        if match_wildcards(t_name, table_filter):
+            for c_name in cols.keys():
+                for p in forbid_prefixes:
+                    if c_name.lower().startswith(p.lower()):
+                        violations.append(f"{t_name}[{c_name}] starts with forbidden prefix '{p}'")
+                for pat in forbid_patterns:
+                    if match_wildcards(c_name, pat):
+                        violations.append(f"{t_name}[{c_name}] matches forbidden pattern '{pat}'")
+
+    if violations:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"No column names in '{table_filter}' starting with {forbid_prefixes}",
+            actual=f"Violations: {', '.join(violations)}",
+            rule_type="column_naming",
+            target=table_filter,
+        )
+    return AssertionResult(name=name, passed=True, rule_type="column_naming", target=table_filter)
+
+
+@register("column_exists")
+def assert_column_exists(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "Column Exists Check")
+    table_name = rule.get("table", "")
+    raw_cols = rule.get("columns") or [rule.get("column", "")]
+    target_cols = [clean_measure_name(c) for c in raw_cols if c]
+
+    matching_tables = [t for t in model.tables if match_wildcards(t, table_name)]
+    if not matching_tables:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Table '{table_name}' to exist",
+            actual=f"Available tables: {', '.join(model.tables) or 'none'}",
+            rule_type="column_exists",
+            target=table_name,
+        )
+
+    missing = []
+    for tbl in matching_tables:
+        existing_cols = {c.lower(): c for c in model.columns.get(tbl, {}).keys()}
+        for col in target_cols:
+            if col.lower() not in existing_cols:
+                missing.append(f"{tbl}[{col}]")
+
+    if missing:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Column(s) {', '.join(target_cols)} to exist in '{table_name}'",
+            actual=f"Missing: {', '.join(missing)}",
+            rule_type="column_exists",
+            target=table_name,
+        )
+    return AssertionResult(name=name, passed=True, rule_type="column_exists", target=table_name)
+
+
+@register("column_rule", "column_property_equals")
+def assert_column_rule(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "Column Rule Check")
+    table_filter = rule.get("table") or rule.get("table_pattern", "*")
+    col_filter = rule.get("column") or rule.get("column_pattern", "*")
+
+    summarize_by = rule.get("summarize_by") or rule.get("expected")
+    is_hidden = rule.get("hidden") or rule.get("is_hidden")
+    data_type = rule.get("data_type") or rule.get("dataType")
+
+    violations = []
+    matched_columns = 0
+
+    for t_name, cols in model.columns.items():
+        if match_wildcards(t_name, table_filter):
+            for c_name, col in cols.items():
+                if match_wildcards(c_name, col_filter):
+                    matched_columns += 1
+                    if summarize_by is not None:
+                        actual_sb = _get_property(col.properties, "summarizeBy")
+                        if actual_sb.lower() != str(summarize_by).lower():
+                            violations.append(f"{t_name}[{c_name}] (summarizeBy='{actual_sb or 'default'}')")
+                    if is_hidden is not None:
+                        actual_hide = _get_property(col.properties, "isHidden", "false").lower() == "true"
+                        if actual_hide != bool(is_hidden):
+                            violations.append(f"{t_name}[{c_name}] (isHidden={actual_hide})")
+                    if data_type is not None:
+                        actual_dt = _get_property(col.properties, "dataType")
+                        if actual_dt.lower() != str(data_type).lower():
+                            violations.append(f"{t_name}[{c_name}] (dataType='{actual_dt or 'default'}')")
+
+    if matched_columns == 0:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Target column(s) matching '{table_filter}[{col_filter}]'",
+            actual="No matching columns found in model",
+            rule_type="column_rule",
+            target=f"{table_filter}[{col_filter}]",
+        )
+
+    if violations:
+        expected_desc = []
+        if summarize_by is not None:
+            expected_desc.append(f"summarizeBy='{summarize_by}'")
+        if is_hidden is not None:
+            expected_desc.append(f"isHidden={is_hidden}")
+        if data_type is not None:
+            expected_desc.append(f"dataType='{data_type}'")
+
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=", ".join(expected_desc),
+            actual=f"Violations: {', '.join(violations)}",
+            rule_type="column_rule",
+            target=f"{table_filter}[{col_filter}]",
+        )
+    return AssertionResult(name=name, passed=True, rule_type="column_rule", target=f"{table_filter}[{col_filter}]")
+
+
+@register("column_format")
+def assert_column_format(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "Column Format Check")
+    table_filter = rule.get("table") or rule.get("table_pattern", "*")
+    col_filter = rule.get("column") or rule.get("columns") or rule.get("columns_matching", "*")
+    fmt_type = str(rule.get("format", "")).lower()
+
+    target_cols: List[Tuple[str, str, Column]] = []
+    for t_name, cols in model.columns.items():
+        if match_wildcards(t_name, table_filter):
+            for c_name, col in cols.items():
+                if match_wildcards(c_name, col_filter):
+                    target_cols.append((t_name, c_name, col))
+
+    if not target_cols:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Matching column(s) for '{table_filter}[{col_filter}]'",
+            actual="No matching columns found in model",
+            rule_type="column_format",
+            target=f"{table_filter}[{col_filter}]",
+        )
+
+    violations = []
+    for t_name, c_name, col in target_cols:
+        actual_fmt = _get_format_string(col.properties)
+        if fmt_type == "currency":
+            is_currency = (
+                any(sym in actual_fmt for sym in ["$", "€", "£", "¥", "₹", "#,##"])
+                or "currency" in actual_fmt.lower()
+            )
+            if not is_currency:
+                violations.append(f"{t_name}[{c_name}] (formatString='{actual_fmt or 'none'}')")
+        elif fmt_type in ["percentage", "percent"]:
+            if "%" not in actual_fmt and "percent" not in actual_fmt.lower():
+                violations.append(f"{t_name}[{c_name}] (formatString='{actual_fmt or 'none'}')")
+        else:
+            if fmt_type not in actual_fmt.lower():
+                violations.append(f"{t_name}[{c_name}] (formatString='{actual_fmt or 'none'}')")
+
+    if violations:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"format: '{fmt_type}'",
+            actual=f"Violations: {', '.join(violations)}",
+            rule_type="column_format",
+            target=f"{table_filter}[{col_filter}]",
+        )
+    return AssertionResult(name=name, passed=True, rule_type="column_format", target=f"{table_filter}[{col_filter}]")
+
+
+# ==============================================================================
+# 3. DAX LOGIC, CONTRACT PINNING & LINEAGE ASSERTIONS
+# ==============================================================================
+
+@register("dax_exact")
+def assert_dax_exact(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
+    name = rule.get("name", "DAX Exact Contract Match")
+    raw_measure = rule.get("measure", "")
+    target = clean_measure_name(raw_measure)
+    expected_dax = rule.get("expected", "")
+
+    if target not in model.measures:
+        col_hint = _find_column_in_model(target, model)
+        extra_msg = f" Note: '{target}' exists as column '{col_hint}', not as a DAX measure." if col_hint else ""
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Measure [{target}] to exist",
+            actual=f"Measure not found in model.{extra_msg}",
+            rule_type="dax_exact",
+            target=f"[{target}]",
+        )
+
+    actual_norm = normalize_dax(model.measures[target].expression)
+    expected_norm = normalize_dax(expected_dax)
+
+    if actual_norm.lower() != expected_norm.lower():
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=expected_dax,
+            actual=model.measures[target].expression,
+            rule_type="dax_exact",
+            target=f"[{target}]",
+        )
+
+    return AssertionResult(name=name, passed=True, rule_type="dax_exact", target=f"[{target}]")
+
+
 @register("dax_dependency_chain", "measure_dependency_chain")
 def assert_dax_dependency_chain(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
     name = rule.get("name", "DAX Dependency Chain Check")
@@ -66,11 +362,13 @@ def assert_dax_dependency_chain(model: SemanticModel, rule: Dict[str, Any]) -> A
     target = clean_measure_name(raw_measure)
 
     if target not in model.measures:
+        col_hint = _find_column_in_model(target, model)
+        extra_msg = f" Note: '{target}' exists as column '{col_hint}', not as a DAX measure." if col_hint else ""
         return AssertionResult(
             name=name,
             passed=False,
             expected=f"Measure [{target}] to exist in model",
-            actual="Measure not found",
+            actual=f"Measure not found.{extra_msg}",
             rule_type="dax_dependency_chain",
             target=f"[{target}]",
         )
@@ -137,11 +435,13 @@ def assert_column_usage_rule(model: SemanticModel, rule: Dict[str, Any]) -> Asse
                     targets.append(m)
 
     if not targets:
+        col_hint = _find_column_in_model(str(target), model) if target else None
+        extra_msg = f" (target '{target}' exists as column '{col_hint}', not a measure)" if col_hint else ""
         return AssertionResult(
             name=name,
             passed=False,
             expected=f"Matching measure(s) for '{target or pattern_filter}'",
-            actual="No matching measures found in model",
+            actual=f"No matching measures found in model{extra_msg}",
             rule_type="column_usage_rule",
             target=str(target or pattern_filter),
         )
@@ -203,132 +503,24 @@ def assert_column_usage_rule(model: SemanticModel, rule: Dict[str, Any]) -> Asse
     return AssertionResult(name=name, passed=True, rule_type="column_usage_rule", target=str(target or pattern_filter))
 
 
-@register("dax_exact")
-def assert_dax_exact(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
-    name = rule.get("name", "DAX Exact Contract Match")
-    raw_measure = rule.get("measure", "")
-    target = clean_measure_name(raw_measure)
-    expected_dax = rule.get("expected", "")
-
-    if target not in model.measures:
-        return AssertionResult(
-            name=name,
-            passed=False,
-            expected=f"Measure [{target}] to exist",
-            actual="Measure not found in model",
-            rule_type="dax_exact",
-            target=f"[{target}]",
-        )
-
-    actual_norm = normalize_dax(model.measures[target].expression)
-    expected_norm = normalize_dax(expected_dax)
-
-    if actual_norm.lower() != expected_norm.lower():
-        return AssertionResult(
-            name=name,
-            passed=False,
-            expected=expected_dax,
-            actual=model.measures[target].expression,
-            rule_type="dax_exact",
-            target=f"[{target}]",
-        )
-
-    return AssertionResult(name=name, passed=True, rule_type="dax_exact", target=f"[{target}]")
-
-
-@register("no_calculated_columns", "no_calc_columns")
-def assert_no_calculated_columns(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
-    name = rule.get("name", "No Calculated Columns")
-    table_filter = rule.get("table") or rule.get("tables") or rule.get("table_pattern", "*")
-
-    violations = [
-        f"{t_name}[{c}]"
-        for t_name, cols in model.calculated_columns.items()
-        if match_wildcards(t_name, table_filter)
-        for c in cols
-    ]
-
-    if violations:
-        return AssertionResult(
-            name=name,
-            passed=False,
-            expected=f"0 calculated columns in '{table_filter}'",
-            actual=f"Found {len(violations)}: {', '.join(violations)}",
-            rule_type="no_calculated_columns",
-            target=table_filter,
-        )
-    return AssertionResult(name=name, passed=True, rule_type="no_calculated_columns", target=table_filter)
-
-
-@register("no_auto_date_tables")
-def assert_no_auto_date_tables(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
-    name = rule.get("name", "Auto Date/Time Disabled")
-    auto_tables = [t for t in model.tables if t.lower().startswith(("localdatetable_", "datetabletemplate_"))]
-    if auto_tables:
-        return AssertionResult(
-            name=name,
-            passed=False,
-            expected="Auto Date/Time turned off in file options",
-            actual=f"Found {len(auto_tables)} hidden local date table(s): {', '.join(auto_tables)}",
-            rule_type="no_auto_date_tables",
-        )
-    return AssertionResult(name=name, passed=True, rule_type="no_auto_date_tables")
-
-
-@register("column_rule", "column_property_equals")
-def assert_column_rule(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
-    name = rule.get("name", "Column Rule Check")
-    table_filter = rule.get("table") or rule.get("table_pattern", "*")
-    col_filter = rule.get("column") or rule.get("column_pattern", "*")
-    summarize_by = rule.get("summarize_by") or rule.get("expected")
-    is_hidden = rule.get("hidden") or rule.get("is_hidden")
-
-    violations = []
-    for t_name, cols in model.columns.items():
-        if match_wildcards(t_name, table_filter):
-            for c_name, col in cols.items():
-                if match_wildcards(c_name, col_filter):
-                    if summarize_by is not None:
-                        actual_sb = col.properties.get("summarizeBy", "").lower()
-                        if actual_sb != str(summarize_by).lower():
-                            violations.append(f"{t_name}[{c_name}] (summarizeBy='{actual_sb or 'default'}')")
-                    if is_hidden is not None:
-                        actual_hide = col.properties.get("isHidden", "false").lower() == "true"
-                        if actual_hide != bool(is_hidden):
-                            violations.append(f"{t_name}[{c_name}] (isHidden={actual_hide})")
-
-    if violations:
-        expected_desc = []
-        if summarize_by is not None:
-            expected_desc.append(f"summarizeBy='{summarize_by}'")
-        if is_hidden is not None:
-            expected_desc.append(f"isHidden={is_hidden}")
-
-        return AssertionResult(
-            name=name,
-            passed=False,
-            expected=", ".join(expected_desc),
-            actual=f"Violations: {', '.join(violations)}",
-            rule_type="column_rule",
-            target=f"{table_filter}[{col_filter}]",
-        )
-    return AssertionResult(name=name, passed=True, rule_type="column_rule", target=f"{table_filter}[{col_filter}]")
-
-
 @register("measure_exists")
 def assert_measure_exists(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
     name = rule.get("name", "Measure Exists Check")
-    target = clean_measure_name(rule.get("measure", ""))
+    raw_target = rule.get("measure", "")
+    target = clean_measure_name(raw_target)
 
     if target in model.measures:
         return AssertionResult(name=name, passed=True, rule_type="measure_exists", target=f"[{target}]")
+
+    col_hint = _find_column_in_model(target, model)
+    extra_msg = f" Note: '[{target}]' was found as a COLUMN in table '{col_hint.split('[')[0]}', but is not a DAX measure." if col_hint else ""
 
     available = ", ".join(f"[{m}]" for m in sorted(model.measures.keys())) or "none"
     return AssertionResult(
         name=name,
         passed=False,
         expected=f"Measure [{target}] to exist",
-        actual=f"Available measures: {available}",
+        actual=f"Available measures: {available}.{extra_msg}",
         rule_type="measure_exists",
         target=f"[{target}]",
     )
@@ -353,11 +545,13 @@ def assert_dax_rule(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResu
                     targets.append(m)
 
     if not targets:
+        col_hint = _find_column_in_model(str(target), model) if target else None
+        extra_msg = f" (target '{target}' exists as column '{col_hint}', not a measure)" if col_hint else ""
         return AssertionResult(
             name=name,
             passed=False,
             expected=f"Matching measure(s) for '{target or pattern_filter}'",
-            actual="No matching measures found in model",
+            actual=f"No matching measures found in model{extra_msg}",
             rule_type="dax_rule",
             target=str(target or pattern_filter),
         )
@@ -408,6 +602,10 @@ def assert_dax_rule(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResu
     return AssertionResult(name=name, passed=True, rule_type="dax_rule", target=str(target or pattern_filter))
 
 
+# ==============================================================================
+# 4. GOVERNANCE & FORMATTING ASSERTIONS
+# ==============================================================================
+
 @register("measure_format")
 def assert_measure_format(model: SemanticModel, rule: Dict[str, Any]) -> AssertionResult:
     name = rule.get("name", "Measure Format Check")
@@ -416,25 +614,57 @@ def assert_measure_format(model: SemanticModel, rule: Dict[str, Any]) -> Asserti
     pattern_filter = rule.get("measures_matching")
 
     matched_measures: List[Measure] = []
+    missing_targets: List[str] = []
+
     if targets_list:
         for t in targets_list:
             c = clean_measure_name(t)
             if c in model.measures:
                 matched_measures.append(model.measures[c])
+            else:
+                col_hint = _find_column_in_model(c, model)
+                if col_hint:
+                    missing_targets.append(f"[{c}] (exists as column '{col_hint}', not as a measure)")
+                else:
+                    missing_targets.append(f"[{c}]")
     elif pattern_filter:
         for m_name, m in model.measures.items():
             if match_wildcards(m_name, pattern_filter):
                 matched_measures.append(m)
 
+    if missing_targets:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Target measure(s) to exist: {', '.join(targets_list)}",
+            actual=f"Missing measure(s): {', '.join(missing_targets)}",
+            rule_type="measure_format",
+            target=str(targets_list),
+        )
+
+    if not matched_measures and pattern_filter:
+        return AssertionResult(
+            name=name,
+            passed=False,
+            expected=f"Measures matching pattern '{pattern_filter}'",
+            actual="No matching measures found in model",
+            rule_type="measure_format",
+            target=str(pattern_filter),
+        )
+
     fmt_type = str(rule.get("format", "")).lower()
     violations = []
     for m in matched_measures:
-        actual_fmt = m.properties.get("formatString", "")
+        actual_fmt = _get_format_string(m.properties)
         if fmt_type == "currency":
-            if not any(sym in actual_fmt for sym in ["$", "€", "£", "¥", "₹", "#,##"]):
+            is_currency = (
+                any(sym in actual_fmt for sym in ["$", "€", "£", "¥", "₹", "#,##"])
+                or "currency" in actual_fmt.lower()
+            )
+            if not is_currency:
                 violations.append(f"[{m.name}] (formatString='{actual_fmt or 'none'}')")
         elif fmt_type in ["percentage", "percent"]:
-            if "%" not in actual_fmt:
+            if "%" not in actual_fmt and "percent" not in actual_fmt.lower():
                 violations.append(f"[{m.name}] (formatString='{actual_fmt or 'none'}')")
         else:
             if fmt_type not in actual_fmt.lower():
@@ -447,9 +677,9 @@ def assert_measure_format(model: SemanticModel, rule: Dict[str, Any]) -> Asserti
             expected=f"format: '{fmt_type}'",
             actual=f"Violations: {', '.join(violations)}",
             rule_type="measure_format",
-            target=str(target or pattern_filter),
+            target=str(targets_list or pattern_filter),
         )
-    return AssertionResult(name=name, passed=True, rule_type="measure_format", target=str(target or pattern_filter))
+    return AssertionResult(name=name, passed=True, rule_type="measure_format", target=str(targets_list or pattern_filter))
 
 
 @register("measure_naming", "measure_forbidden_pattern")

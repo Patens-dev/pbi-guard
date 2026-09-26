@@ -12,11 +12,17 @@ assertions:
   - name: "Arch: Block auto date/time hidden tables"
     type: no_auto_date_tables
 
+  - name: "Arch: Verify essential base columns exist in financials table"
+    type: column_exists
+    table: "financials"
+    columns: ["Sales", "Profit", "COGS", "Year", "Date"]
+
   - name: "Arch: Prevent default aggregation (auto-sum) on Year column"
     type: column_rule
     table: "financials"
     column: "Year"
     summarize_by: "none"
+    data_type: "int64"
 
   # ==============================================================================
   # 2. DAX LOGIC CONTRACTS & FORMULA PINNING
@@ -84,6 +90,17 @@ assertions:
     measures_matching: ["*%*", "*Margin*"]
     format: "percentage"
 
-  - name: "Gov: Enforce clean naming conventions (no technical prefixes)"
+  - name: "Gov: Enforce clean measure naming conventions (no technical prefixes)"
     type: measure_naming
     forbid_prefixes: ["m_", "meas_", "calc_"]
+
+  - name: "Gov: Enforce clean column naming (catches m_Country)"
+    type: column_naming
+    table: "financials"
+    forbid_prefixes: ["m_", "meas_", "calc_"]
+
+  - name: "Gov: Fact financial columns must have currency format strings"
+    type: column_format
+    table: "financials"
+    column: "Profit"
+    format: "currency"
