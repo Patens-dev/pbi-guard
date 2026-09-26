@@ -1,8 +1,8 @@
 # pbi-guard
 
-Automated contract testing, architectural linting, and governance for Power BI semantic models (`.pbip` / TMDL).
+Automated contract testing, architectural linting, and governance for Power BI semantic models (`.pbip` / TMDL) .
 
-Run DAX logic checks, tabular modeling assertions, and auditable UAT sign-off reports locally in milliseconds, without opening Power BI Desktop, writing complex regular expressions, or configuring cloud credentials.
+Run DAX logic checks, column and tabular modeling assertions, and auditable UAT sign-off reports locally in milliseconds, without opening Power BI Desktop, writing complex regular expressions, or configuring cloud credentials .
 
 ---
 
@@ -11,17 +11,18 @@ Run DAX logic checks, tabular modeling assertions, and auditable UAT sign-off re
 ### 1. Why `pbi-guard` Exists
 * **The "Executive Embarrassment" Filter:** Dashboard consumers rarely notice subtle calculation errors; errors are usually caught by the leadership team during Monday morning executive meetings.
 * **The "Magic Number" Epidemic:** Developers under pressure frequently slip arbitrary multipliers or scalar adjustments (`* 1.042` or `+ 15000`) into production measures to force dashboards to match manual spreadsheets.
+* **Columns vs. Measures Disambiguation:** Confusing table columns with explicit measures leads to silent calculation errors and implicit aggregations (`Sum of Year`). `pbi-guard` validates both object types with distinct contracts.
 * **The Compiler for AI Agents:** When using Claude or Cursor via MCP to modify TMDL files, probabilistic models hallucinate code or invent non-existent columns. `pbi-guard` provides a deterministic gate that prevents unvetted changes from being saved or deployed.
-* **Ending "YOLO Friday" Releases:** Replacing manual, error-prone spot checks in Excel with automated, deterministic assertions that run in under 100 milliseconds.
+* **Ending "YOLO Friday" Releases:** Replacing manual, error-prone spot checks in Excel with automated, deterministic assertions that run in under 50 milliseconds.
 
 ---
 
 ### 2. When to Use It
-| Stage | Trigger | Purpose                                                                                                         |
-| :--- | :--- |:----------------------------------------------------------------------------------------------------------------|
-| **Local Dev** | Before saving or staging git commits | Verify DAX syntax, check for uncompressed calculated columns, and validate formula definitions locally.         |
-| **AI / MCP Workflows** | After an LLM/agent edits TMDL | Validate agent output. If `pbi-guard` fails, pipe the failure output back to the agent for self-correction.     |
-| **Production UAT Sign-Off** | Release deployment pipeline | Generate a formal `--export-report uat_audit.md` artifact attached to release tickets for stakeholder sign-off. |
+| Stage | Trigger | Purpose |
+| :--- | :--- | :--- |
+| **Local Dev** | Before saving or staging git commits | Verify DAX syntax, check for uncompressed calculated columns, and validate formula definitions locally. |
+| **AI / MCP Workflows** | After an LLM/agent edits TMDL | Validate agent output. If `pbi-guard` fails, pipe the failure output back to the agent for self-correction. |
+| **Production UAT Sign-Off** | Release deployment pipeline | Generate a formal `--export-report uat_audit.md` artifact attached to release tickets for stakeholder sign-off . |
 
 ---
 
@@ -34,18 +35,16 @@ Run against any `.pbip` project file, `.SemanticModel` directory, or raw `defini
 # Run standard test suite
 python main.py -c pbi_tests.yml -m "../path/to/Sales.pbip"
 
-# Run tests and generate an auditable UAT sign-off report
+# Run tests and generate an auditable UAT sign-off report (.md, .html, or .json)
 python main.py -c pbi_tests.yml -m "../path/to/Sales.pbip" --export-report uat_audit.md
 ```
-
----
 
 ## Installation
 
 Requires Python 3.9+.
 
 ```bash
-git clone https://github.com/Patens-dev/pbi-guard.git
+git clone https://github.com/flaviu01/pbi-guard.git
 cd pbi-guard
 pip install pyyaml
 ```
@@ -71,12 +70,19 @@ assertions:
   - name: "Arch: Block auto date/time hidden tables"
     type: no_auto_date_tables
 
+  # Ensure essential schema columns exist after warehouse ETL
+  - name: "Arch: Core base columns exist in financials"
+    type: column_exists
+    table: "financials"
+    columns: ["Sales", "Profit", "COGS", "Year", "Date"]
+
   # Stop numeric IDs, years, or zip codes from auto-summing in visuals
   - name: "Arch: Prevent default aggregation on Year column"
     type: column_rule
     table: "financials"
     column: "Year"
     summarize_by: "none"
+    data_type: "int64"
 
   # ==============================================================================
   # 2. DAX LOGIC CONTRACTS & FORMULA PINNING
@@ -154,10 +160,23 @@ assertions:
     measures_matching: ["*%*", "*Margin*"]
     format: "percentage"
 
-  # Eliminate obsolete technical prefixes for self-service usability
-  - name: "Gov: Enforce clean naming conventions"
+  # Eliminate obsolete technical prefixes on measures for self-service usability
+  - name: "Gov: Enforce clean measure naming conventions"
     type: measure_naming
     forbid_prefixes: ["m_", "meas_", "calc_"]
+
+  # Eliminate Hungarian notation or developer prefixes on table columns
+  - name: "Gov: Enforce clean column naming (catches m_Country)"
+    type: column_naming
+    table: "financials"
+    forbid_prefixes: ["m_", "meas_", "calc_"]
+
+  # Validate currency formatting directly on visible table columns
+  - name: "Gov: Profit column must have currency format string"
+    type: column_format
+    table: "financials"
+    column: "Profit"
+    format: "currency"
 ```
 
 ---
@@ -176,17 +195,22 @@ assertions:
 * **When:** Across all production models; teams should use a dedicated `DimDate` dimension .
 * **Parameters:** None .
 
+#### `column_exists`
+* **Why:** Upstream warehouse migrations or ETL script changes can silently drop or rename columns, causing visual breakages at refresh time.
+* **When:** To enforce explicit schema contracts between your data warehouse and semantic models.
+* **Parameters:** `table` (string), `columns` (list of strings) or `column` (string).
+
 #### `column_rule`
 * **Why:** By default, Power BI attempts to sum numeric fields, displaying `Sum of Year: 6,075` on executive card visuals .
 * **When:** On foreign keys, IDs, Postal Codes, and Date attributes (`summarize_by: "none"`) .
-* **Parameters:** `table`, `column`, `summarize_by`, `hidden` .
+* **Parameters:** `table`, `column`, `summarize_by`, `hidden`, `data_type` (`"int64"`, `"double"`, `"string"`, `"dateTime"`).
 
 ---
 
-### DAX Logic Contracts & Integrity
+### DAX Logic Contracts & Lineage
 
 #### `dax_exact`
-* **Why:** Broad linters pass even if calculations are inverted (e.g., `DIVIDE([COGS], [Sales])` passes a loose check). `dax_exact` freezes the formula definition character-for-character, ignoring trivial comment or whitespace drift.
+* **Why:** Broad linters pass even if calculations are inverted (e.g., `DIVIDE([COGS], [Sales])` passes a loose check). `dax_exact` freezes the formula definition character-for-character, ignoring trivial whitespace drift.
 * **When:** On core board-level financial metrics (`[Gross Profit]`, `[EBITDA]`, `[ARR]`).
 * **Parameters:** `measure` (string), `expected` (string DAX expression).
 
@@ -201,7 +225,7 @@ assertions:
 * **Parameters:** `measures_matching`, `forbid_column_references`, `must_reference_tables`, `allowed_tables`, `exclude_measures`.
 
 #### `dax_rule`
-* **Why:** General-purpose DAX validator. Strips comments and string literals to prevent false positives.
+* **Why:** General-purpose DAX validator. Strips comments and string literals to prevent false positives .
 * **When:** Enforcing safe functions, blocking `/` division, and catching hardcoded numbers .
 * **Parameters:** 
   * `must_call`: Function name(s) required (e.g., `DIVIDE`) .
@@ -219,10 +243,20 @@ assertions:
 * **When:** On all customer-facing or executive semantic models .
 * **Parameters:** `measures`, `measures_matching`, `format` (`"currency"`, `"percentage"`, or custom mask) .
 
+#### `column_format`
+* **Why:** When numeric fact columns are left visible in report visuals, unformatted sums look unpolished.
+* **When:** On any numeric or currency database columns exposed directly to report authors.
+* **Parameters:** `table`, `column` (or `columns` / `columns_matching`), `format` (`"currency"`, `"percentage"`).
+
 #### `measure_naming`
 * **Why:** Bans legacy Hungarian notation and technical prefixes that confuse self-service business users in the visual field picker .
 * **When:** Global model governance .
 * **Parameters:** `forbid_prefixes` (list of prefixes to disallow) .
+
+#### `column_naming`
+* **Why:** Prevents technical prefixes (`m_`, `calc_`, `f_`) on imported table columns to keep field lists clean and avoid mistaking columns for measures.
+* **When:** Global schema governance across dimension and fact tables.
+* **Parameters:** `table` (optional, defaults to `*`), `forbid_prefixes`, `forbid_patterns`.
 
 ---
 
