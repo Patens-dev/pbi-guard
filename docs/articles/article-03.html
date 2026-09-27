@@ -1,539 +1,597 @@
-<style>
-  .guide-container {
-    margin-top: 10px;
-    font-family: var(--font-sans);
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Use AI to Handle Power BI: PBI Guard Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
 
-  .guide-intro {
-    font-size: 16.5px;
-    color: #475569;
-    line-height: 1.6;
-    margin-bottom: 24px;
-  }
+  <style>
+    .guide-container { margin-top: 10px; }
+    .guide-intro { font-size: 16.5px; color: #475569; line-height: 1.6; margin-bottom: 24px; }
+    .guide-hud {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .hud-progress-pill {
+      background: #f1f5f9;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .hud-view-toggle {
+      display: flex;
+      gap: 6px;
+      background: #f8fafc;
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .toggle-view-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #64748b;
+    }
+    .toggle-view-btn.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .step-pills-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .step-pill {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .step-pill.active { background: #0f172a; border-color: #0f172a; color: #ffffff; }
+    .step-pill.completed { border-color: #10b981; color: #047857; background: #ecfdf5; }
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: 0 8px 24px -6px rgba(100, 116, 139, 0.06);
+      margin-bottom: 20px;
+    }
+    .step-card.active-step {
+      border-color: #38bdf8;
+      box-shadow: 0 12px 30px -8px rgba(56, 189, 248, 0.2);
+    }
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .step-meta { display: flex; align-items: center; gap: 10px; }
+    .step-index-badge {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 13px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+    .app-vscode { background: #e0f2fe; color: #0284c7; }
+    .app-powerbi { background: #fef3c7; color: #b45309; }
+    .location-tag { font-size: 12px; color: #64748b; margin-bottom: 10px; }
+    .step-title { font-family: var(--font-serif); font-size: 20px; font-weight: 600; color: #0f172a; margin-bottom: 8px; }
+    .step-description { font-size: 14.5px; color: #334155; line-height: 1.6; margin-bottom: 14px; }
+    .interactive-action-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-guide-action {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .check-done-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; }
+    .check-done-box { width: 18px; height: 18px; cursor: pointer; accent-color: #10b981; }
+    .wizard-controls { display: flex; justify-content: space-between; margin-top: 24px; gap: 12px; }
+    .btn-wizard-nav {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #0f172a;
+      cursor: pointer;
+    }
+    .btn-wizard-next { background: #0f172a; color: #ffffff; border-color: #0f172a; }
+    .prompt-sandbox { margin-top: 14px; background: #0f172a; border-radius: 14px; overflow: hidden; }
+    .sandbox-tabs { display: flex; background: #1e293b; padding: 6px 10px; gap: 6px; }
+    .sandbox-tab {
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #94a3b8;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .sandbox-tab.active { background: #0f172a; color: #ffffff; }
+    .sandbox-content { padding: 16px; font-family: var(--font-mono); font-size: 12.5px; color: #e2e8f0; line-height: 1.6; position: relative; }
+    .btn-copy-prompt {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255,255,255,0.15);
+      color: #ffffff;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
 
-  .guide-hud {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 18px;
-    padding: 16px 20px;
-    margin-bottom: 28px;
-    box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.04);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-  }
+  <div class="aurora-bg"></div>
 
-  .hud-stats {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+  <!-- NAVBAR -->
+  <header class="nav-wrapper" id="navWrapper">
+    <nav class="navbar">
+      <a href="../index.html" class="nav-brand">
+        <div class="brand-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span>PBI Guard</span>
+      </a>
 
-  .hud-progress-pill {
-    background: #f1f5f9;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #0f172a;
-  }
+      <ul class="nav-links">
+        <li><a href="../index.html" class="nav-link">Overview</a></li>
+        <li><a href="../index.html#simulator" class="nav-link">Live Simulator</a></li>
+        <li><a href="../index.html#articles" class="nav-link active">Articles</a></li>
+      </ul>
 
-  .hud-view-toggle {
-    display: flex;
-    gap: 6px;
-    background: #f8fafc;
-    padding: 4px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-  }
+      <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" class="nav-cta">Star on GitHub</a>
+    </nav>
+  </header>
 
-  .toggle-view-btn {
-    border: none;
-    background: transparent;
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    color: #64748b;
-    transition: all 0.2s ease;
-  }
+  <main class="article-reader-container">
+    <a href="../index.html#articles" class="btn-back">← Back to Articles</a>
 
-  .toggle-view-btn.active {
-    background: #ffffff;
-    color: #0f172a;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  }
-
-  .step-pills-bar {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-    scrollbar-width: thin;
-  }
-
-  .step-pill {
-    flex-shrink: 0;
-    padding: 6px 12px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #64748b;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-  }
-
-  .step-pill:hover {
-    border-color: #94a3b8;
-    color: #0f172a;
-  }
-
-  .step-pill.active {
-    background: #0f172a;
-    border-color: #0f172a;
-    color: #ffffff;
-  }
-
-  .step-pill.completed {
-    border-color: #10b981;
-    color: #047857;
-    background: #ecfdf5;
-  }
-
-  .step-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 26px;
-    box-shadow: 0 8px 24px -6px rgba(100, 116, 139, 0.06);
-    margin-bottom: 20px;
-    transition: transform 0.2s ease, border-color 0.2s ease;
-  }
-
-  .step-card.active-step {
-    border-color: #38bdf8;
-    box-shadow: 0 12px 30px -8px rgba(56, 189, 248, 0.2);
-  }
-
-  .step-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .step-meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .step-index-badge {
-    background: #f1f5f9;
-    color: #0f172a;
-    font-weight: 800;
-    font-size: 13px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .app-badge {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .app-vscode { background: #e0f2fe; color: #0284c7; }
-  .app-powerbi { background: #fef3c7; color: #b45309; }
-
-  .location-tag {
-    font-size: 12px;
-    color: #64748b;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 10px;
-  }
-
-  .step-title {
-    font-family: var(--font-serif);
-    font-size: 20px;
-    font-weight: 600;
-    color: #0f172a;
-    margin-bottom: 8px;
-  }
-
-  .step-description {
-    font-size: 14.5px;
-    color: #334155;
-    line-height: 1.6;
-    margin-bottom: 14px;
-  }
-
-  .interactive-action-box {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-top: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .btn-guide-action {
-    background: #0f172a;
-    color: #ffffff;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    font-weight: 600;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .check-done-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #475569;
-    cursor: pointer;
-  }
-
-  .check-done-box {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #10b981;
-  }
-
-  .wizard-controls {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 24px;
-    gap: 12px;
-  }
-
-  .btn-wizard-nav {
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 1px solid #cbd5e1;
-    background: #ffffff;
-    color: #0f172a;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .btn-wizard-next {
-    background: #0f172a;
-    color: #ffffff;
-    border-color: #0f172a;
-  }
-
-  .prompt-sandbox {
-    margin-top: 14px;
-    background: #0f172a;
-    border-radius: 14px;
-    overflow: hidden;
-  }
-
-  .sandbox-tabs {
-    display: flex;
-    background: #1e293b;
-    padding: 6px 10px;
-    gap: 6px;
-  }
-
-  .sandbox-tab {
-    padding: 6px 12px;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #94a3b8;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .sandbox-tab.active {
-    background: #0f172a;
-    color: #ffffff;
-  }
-
-  .sandbox-content {
-    padding: 16px;
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    color: #e2e8f0;
-    line-height: 1.6;
-    position: relative;
-  }
-
-  .btn-copy-prompt {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: rgba(255,255,255,0.15);
-    color: #ffffff;
-    border: none;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-family: var(--font-sans);
-    cursor: pointer;
-  }
-
-  .btn-copy-prompt:hover {
-    background: rgba(255,255,255,0.25);
-  }
-</style>
-
-<div class="guide-container">
-  <p class="guide-intro">
-    Power BI Desktop gets painfully slow when you build dozens of tables and measures by hand.
-    You can now skip the desktop clicks and let AI generate your entire data model inside Visual Studio Code.
-    Use this interactive guide to walk through the exact setup.
-  </p>
-
-  <div class="guide-hud">
-    <div class="hud-stats">
-      <span class="hud-progress-pill" id="hudProgressText">0 of 10 Steps Completed</span>
+    <div class="article-page-header">
+      <span class="article-tag">Agentic Workflows</span>
+      <h1 class="article-page-title">How to Use AI to Handle Power BI (Step-by-Step Guide)</h1>
+      <div style="font-size: 13px; color: var(--text-subtle);">Published September 2026 • 5 min read • By PBI Guard Core Team</div>
     </div>
 
-    <div class="hud-view-toggle">
-      <button class="toggle-view-btn active" data-action="set-view" data-view="wizard" id="btnModeWizard">Wizard Mode</button>
-      <button class="toggle-view-btn" data-action="set-view" data-view="list" id="btnModeList">View All</button>
-    </div>
-  </div>
+    <div class="guide-container">
+      <p class="guide-intro">
+        Power BI Desktop is slow when you need to create dozens of tables and measures by hand.
+        You can now skip the desktop clicks and let AI generate your entire data model inside Visual Studio Code.
+        Follow this interactive guide to set up your workflow.
+      </p>
 
-  <div class="step-pills-bar" id="stepPillsContainer"></div>
-
-  <div id="stepsContainer">
-    <!-- STEP 1 -->
-    <div class="step-card active-step" id="stepCard1" data-step="1">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">1</span>
-          <span class="app-badge app-vscode">VS Code</span>
+      <!-- HUD -->
+      <div class="guide-hud">
+        <div class="hud-stats">
+          <span class="hud-progress-pill" id="hudProgressText">0 of 10 Steps Completed</span>
         </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="1">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Web Browser</div>
-      <h3 class="step-title">Install Visual Studio Code</h3>
-      <p class="step-description">You need Visual Studio Code installed on your machine as your code and model editor.</p>
-      <div class="interactive-action-box">
-        <span style="font-size: 13px; color: #475569;">Official Microsoft Download</span>
-        <a href="https://code.visualstudio.com" target="_blank" class="btn-guide-action">Open code.visualstudio.com ↗</a>
-      </div>
-    </div>
-
-    <!-- STEP 2 -->
-    <div class="step-card" id="stepCard2" data-step="2" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">2</span>
-          <span class="app-badge app-powerbi">Power BI</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="2">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Windows Store or Microsoft Download</div>
-      <h3 class="step-title">Install Power BI Desktop</h3>
-      <p class="step-description">Power BI Desktop is mandatory. The local Analysis Services database engine runs inside it while you edit files in VS Code.</p>
-      <div class="interactive-action-box">
-        <span style="font-size: 13px; color: #475569;">Free Download from Microsoft</span>
-        <a href="https://powerbi.microsoft.com/desktop/" target="_blank" class="btn-guide-action">Get Power BI Desktop ↗</a>
-      </div>
-    </div>
-
-    <!-- STEP 3 -->
-    <div class="step-card" id="stepCard3" data-step="3" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">3</span>
-          <span class="app-badge app-vscode">VS Code</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="3">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Bottom-left corner: Accounts gear icon</div>
-      <h3 class="step-title">Log In to VS Code with GitHub</h3>
-      <p class="step-description">Launch VS Code. Look at the bottom-left corner of the window. Click the Accounts icon and sign in with your GitHub account. Verify that you have an active GitHub Copilot subscription.</p>
-    </div>
-
-    <!-- STEP 4 -->
-    <div class="step-card" id="stepCard4" data-step="4" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">4</span>
-          <span class="app-badge app-vscode">VS Code</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="4">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Left activity bar: Extensions tab (Ctrl+Shift+X / Cmd+Shift+X)</div>
-      <h3 class="step-title">Install the Power BI Modeling MCP Extension</h3>
-      <p class="step-description">Open the Extensions view. Search for <strong>Power BI Modeling MCP</strong> (or <strong>Power BI Authoring MCP Server</strong>) published by Microsoft. Click <strong>Install</strong>.</p>
-    </div>
-
-    <!-- STEP 5 -->
-    <div class="step-card" id="stepCard5" data-step="5" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">5</span>
-          <span class="app-badge app-powerbi">Power BI</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="5">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Windows Desktop / Start Menu</div>
-      <h3 class="step-title">Launch Power BI Desktop</h3>
-      <p class="step-description">Open Power BI Desktop. Keep it open in the background so its local engine stays active.</p>
-    </div>
-
-    <!-- STEP 6 -->
-    <div class="step-card" id="stepCard6" data-step="6" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">6</span>
-          <span class="app-badge app-powerbi">Power BI</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="6">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Top Ribbon: Home > Get Data</div>
-      <h3 class="step-title">Open or Create a Report</h3>
-      <p class="step-description">Open an existing report file, or create a new blank report and connect to any sample data source like Financial Sample or an Excel sheet.</p>
-    </div>
-
-    <!-- STEP 7 -->
-    <div class="step-card" id="stepCard7" data-step="7" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">7</span>
-          <span class="app-badge app-powerbi">Power BI</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="7">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Top Menu: File > Save As > File Type Dropdown</div>
-      <h3 class="step-title">Save as Power BI Project (*.pbip)</h3>
-      <p class="step-description">Click <strong>File</strong>, click <strong>Save As</strong>, and change the file type dropdown from <code>.pbix</code> to <strong>Power BI Project (*.pbip)</strong>. Select a clean folder and save. This splits your model into plain text TMDL files.</p>
-    </div>
-
-    <!-- STEP 8 -->
-    <div class="step-card" id="stepCard8" data-step="8" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">8</span>
-          <span class="app-badge app-vscode">VS Code</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="8">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Top Menu: File > Open Folder</div>
-      <h3 class="step-title">Open the PBIP Folder in VS Code</h3>
-      <p class="step-description">Switch back to VS Code. Click <strong>File</strong>, select <strong>Open Folder</strong>, and choose the root PBIP folder you saved in step 7. You will see your dataset tables listed as text files inside the sidebar.</p>
-    </div>
-
-    <!-- STEP 9 -->
-    <div class="step-card" id="stepCard9" data-step="9" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">9</span>
-          <span class="app-badge app-vscode">VS Code</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="9">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Left activity bar: GitHub Copilot Chat (Ctrl+Alt+I / Cmd+Alt+I)</div>
-      <h3 class="step-title">Enable the Power BI MCP Tool in Copilot</h3>
-      <p class="step-description">Open Copilot Chat. Switch the mode dropdown from "Chat" to <strong>Agent Mode</strong>. Click the tools wrench icon near the text box and confirm that the Power BI MCP tools are checked and active.</p>
-    </div>
-
-    <!-- STEP 10 -->
-    <div class="step-card" id="stepCard10" data-step="10" style="display:none;">
-      <div class="step-header">
-        <div class="step-meta">
-          <span class="step-index-badge">10</span>
-          <span class="app-badge app-vscode">VS Code</span>
-        </div>
-        <label class="check-done-label">
-          <input type="checkbox" class="check-done-box" data-step="10">
-          <span>Mark as Done</span>
-        </label>
-      </div>
-      <div class="location-tag">📍 Copilot Chat Prompt Input</div>
-      <h3 class="step-title">Tell Copilot What to Build</h3>
-      <p class="step-description">Type what you want Copilot to create. It will inspect your model schema and write the TMDL files directly. Test any of these prompt presets:</p>
-
-      <div class="prompt-sandbox">
-        <div class="sandbox-tabs">
-          <button class="sandbox-tab active" data-action="prompt-tab" data-prompt="calendar">1. Calendar Table</button>
-          <button class="sandbox-tab" data-action="prompt-tab" data-prompt="measures">2. Core Measures</button>
-          <button class="sandbox-tab" data-action="prompt-tab" data-prompt="visual">3. Add Visual Card</button>
-        </div>
-        <div class="sandbox-content">
-          <button class="btn-copy-prompt" data-action="copy-prompt" id="btnCopyPrompt">Copy Prompt</button>
-          <div id="promptTextDisplay">Inspect my model. Create a complete Calendar table in TMDL using CALENDARAUTO with Year, Month, and Quarter columns.</div>
+        <div class="hud-view-toggle">
+          <button class="toggle-view-btn active" id="btnModeWizard">Wizard Mode</button>
+          <button class="toggle-view-btn" id="btnModeList">View All</button>
         </div>
       </div>
 
-      <p style="font-size: 13.5px; color: #475569; margin-top: 14px;">Once Copilot finishes writing, switch back to Power BI Desktop. Your new tables and measures will appear immediately on your canvas.</p>
-    </div>
-  </div>
+      <!-- Step selection pills -->
+      <div class="step-pills-bar" id="stepPillsContainer"></div>
 
-  <div class="wizard-controls" id="wizardControls">
-    <button class="btn-wizard-nav" data-action="prev-step" id="btnPrevStep" style="visibility:hidden;">← Previous Step</button>
-    <button class="btn-wizard-nav btn-wizard-next" data-action="next-step" id="btnNextStep">Next Step →</button>
-  </div>
-</div>
+      <!-- Steps container -->
+      <div id="stepsContainer">
+        <!-- STEP 1 -->
+        <div class="step-card active-step" id="stepCard1">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">1</span>
+              <span class="app-badge app-vscode">VS Code</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="1">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Web Browser</div>
+          <h3 class="step-title">Install Visual Studio Code</h3>
+          <p class="step-description">You need Visual Studio Code installed on your machine as your code and model editor.</p>
+          <div class="interactive-action-box">
+            <span style="font-size: 13px; color: #475569;">Official Microsoft Download</span>
+            <a href="https://code.visualstudio.com" target="_blank" class="btn-guide-action">Open code.visualstudio.com ↗</a>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step-card" id="stepCard2" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">2</span>
+              <span class="app-badge app-powerbi">Power BI</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="2">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Microsoft Store or Direct Download</div>
+          <h3 class="step-title">Install Power BI Desktop</h3>
+          <p class="step-description">Power BI Desktop is mandatory. The local Analysis Services database engine runs inside it while you edit files in VS Code.</p>
+          <div class="interactive-action-box">
+            <span style="font-size: 13px; color: #475569;">Free Download from Microsoft</span>
+            <a href="https://powerbi.microsoft.com/desktop/" target="_blank" class="btn-guide-action">Get Power BI Desktop ↗</a>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step-card" id="stepCard3" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">3</span>
+              <span class="app-badge app-vscode">VS Code</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="3">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Bottom-left corner: Accounts gear icon</div>
+          <h3 class="step-title">Log In to VS Code with GitHub</h3>
+          <p class="step-description">Launch VS Code. Look at the bottom-left corner of the window. Click the Accounts icon and sign in with your GitHub account. Verify that you have an active GitHub Copilot subscription.</p>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="step-card" id="stepCard4" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">4</span>
+              <span class="app-badge app-vscode">VS Code</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="4">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Left activity bar: Extensions tab (Ctrl+Shift+X)</div>
+          <h3 class="step-title">Install the Power BI Modeling MCP Extension</h3>
+          <p class="step-description">Open the Extensions view. Search for <strong>Power BI Modeling MCP</strong> (or <strong>Power BI Authoring MCP Server</strong>) published by Microsoft. Click <strong>Install</strong>.</p>
+        </div>
+
+        <!-- STEP 5 -->
+        <div class="step-card" id="stepCard5" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">5</span>
+              <span class="app-badge app-powerbi">Power BI</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="5">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Windows Desktop / Start Menu</div>
+          <h3 class="step-title">Launch Power BI Desktop</h3>
+          <p class="step-description">Open Power BI Desktop. Keep it open in the background so its local engine stays active.</p>
+        </div>
+
+        <!-- STEP 6 -->
+        <div class="step-card" id="stepCard6" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">6</span>
+              <span class="app-badge app-powerbi">Power BI</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="6">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Top Ribbon: Home > Get Data</div>
+          <h3 class="step-title">Open or Create a Report</h3>
+          <p class="step-description">Open an existing report file, or create a new blank report and connect to any data source like Financial Sample or an Excel sheet.</p>
+        </div>
+
+        <!-- STEP 7 -->
+        <div class="step-card" id="stepCard7" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">7</span>
+              <span class="app-badge app-powerbi">Power BI</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="7">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Top Menu: File > Save As</div>
+          <h3 class="step-title">Save as Power BI Project (*.pbip)</h3>
+          <p class="step-description">Click <strong>File</strong>, select <strong>Save As</strong>, and change the file type dropdown from <code>.pbix</code> to <strong>Power BI Project (*.pbip)</strong>. Select a clean folder and save. This splits your model into plain text TMDL files.</p>
+        </div>
+
+        <!-- STEP 8 -->
+        <div class="step-card" id="stepCard8" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">8</span>
+              <span class="app-badge app-vscode">VS Code</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="8">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Top Menu: File > Open Folder</div>
+          <h3 class="step-title">Open the PBIP Folder in VS Code</h3>
+          <p class="step-description">Switch back to VS Code. Click <strong>File</strong>, select <strong>Open Folder</strong>, and choose the root PBIP folder you saved in step 7. You will see your dataset tables listed as text files inside the sidebar.</p>
+        </div>
+
+        <!-- STEP 9 -->
+        <div class="step-card" id="stepCard9" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">9</span>
+              <span class="app-badge app-vscode">VS Code</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="9">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Left activity bar: GitHub Copilot Chat</div>
+          <h3 class="step-title">Enable the Power BI MCP Tool in Copilot</h3>
+          <p class="step-description">Open Copilot Chat. Switch the mode dropdown from "Chat" to <strong>Agent Mode</strong>. Click the tools wrench icon near the prompt input and confirm that the Power BI MCP tools are checked and active.</p>
+        </div>
+
+        <!-- STEP 10 -->
+        <div class="step-card" id="stepCard10" style="display:none;">
+          <div class="step-header">
+            <div class="step-meta">
+              <span class="step-index-badge">10</span>
+              <span class="app-badge app-vscode">VS Code</span>
+            </div>
+            <label class="check-done-label">
+              <input type="checkbox" class="check-done-box" data-step="10">
+              <span>Mark as Done</span>
+            </label>
+          </div>
+          <div class="location-tag">📍 Copilot Chat Prompt Input</div>
+          <h3 class="step-title">Tell Copilot What to Build</h3>
+          <p class="step-description">Type what you want Copilot to create. It will inspect your model schema and write the TMDL files directly. Test any of these prompt presets:</p>
+
+          <div class="prompt-sandbox">
+            <div class="sandbox-tabs">
+              <button class="sandbox-tab active" data-prompt="calendar">1. Calendar Table</button>
+              <button class="sandbox-tab" data-prompt="measures">2. Core Measures</button>
+              <button class="sandbox-tab" data-prompt="visual">3. Add Visual Card</button>
+            </div>
+            <div class="sandbox-content">
+              <button class="btn-copy-prompt" id="btnCopyPrompt">Copy Prompt</button>
+              <div id="promptTextDisplay">Inspect my model. Create a complete Calendar table in TMDL using CALENDARAUTO with Year, Month, and Quarter columns.</div>
+            </div>
+          </div>
+
+          <p style="font-size: 13.5px; color: #475569; margin-top: 14px;">Once Copilot finishes writing, switch back to Power BI Desktop. Your new tables and measures will appear immediately on your canvas.</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="wizard-controls" id="wizardControls">
+        <button class="btn-wizard-nav" id="btnPrevStep" style="visibility:hidden;">← Previous Step</button>
+        <button class="btn-wizard-nav btn-wizard-next" id="btnNextStep">Next Step →</button>
+      </div>
+    </div>
+
+    <!-- END OF ARTICLE CTA -->
+    <div class="article-end-cta">
+      <span class="cta-eyebrow">Prevent Formula Drift</span>
+      <h3 class="cta-heading">Protect your board-level KPIs today.</h3>
+      <p class="cta-subtext">Stop spending Sunday nights cross-referencing numbers in Excel or worrying about LLM formula mutations.</p>
+      <a href="../index.html#simulator" class="btn-article-guard-cta">
+        <span>Tired of AI hallucinating your PowerBI? Add the guardrails with PBI Guard →</span>
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div style="font-weight: 700; color: var(--text-main);">PBI Guard Project</div>
+      <div>Open-source business logic firewall for Power BI and Fabric.</div>
+      <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" style="color: inherit; text-decoration: underline;">GitHub Repository</a>
+    </div>
+  </footer>
+
+  <!-- NATIVE WIZARD SCRIPT (Runs 100% reliably in standalone page) -->
+  <script>
+    const guideState = {
+      currentStep: 1,
+      viewMode: 'wizard',
+      completed: {},
+      prompts: {
+        calendar: 'Inspect my model. Create a complete Calendar table in TMDL using CALENDARAUTO with Year, Month, and Quarter columns.',
+        measures: 'Look at the Sales table. Add three measures: Total Revenue, Total Cost, and Gross Margin percentage using the DIVIDE function.',
+        visual: 'Add a new card visual to page 1 bound to the Total Revenue measure.'
+      },
+      activePromptKey: 'calendar'
+    };
+
+    const stepPillsContainer = document.getElementById('stepPillsContainer');
+    const hudProgressText = document.getElementById('hudProgressText');
+    const btnModeWizard = document.getElementById('btnModeWizard');
+    const btnModeList = document.getElementById('btnModeList');
+    const btnPrevStep = document.getElementById('btnPrevStep');
+    const btnNextStep = document.getElementById('btnNextStep');
+    const wizardControls = document.getElementById('wizardControls');
+    const promptTextDisplay = document.getElementById('promptTextDisplay');
+    const btnCopyPrompt = document.getElementById('btnCopyPrompt');
+
+    function renderPills() {
+      let html = '';
+      for (let i = 1; i <= 10; i++) {
+        const isActive = (guideState.viewMode === 'wizard' && guideState.currentStep === i) ? 'active' : '';
+        const isDone = guideState.completed[i] ? 'completed' : '';
+        const checkIcon = guideState.completed[i] ? '✓ ' : '';
+        html += `<button class="step-pill ${isActive} ${isDone}" data-step="${i}">${checkIcon}Step ${i}</button>`;
+      }
+      stepPillsContainer.innerHTML = html;
+    }
+
+    function applyUI() {
+      for (let i = 1; i <= 10; i++) {
+        const card = document.getElementById('stepCard' + i);
+        if (!card) continue;
+        if (guideState.viewMode === 'list') {
+          card.style.display = 'block';
+          card.classList.remove('active-step');
+        } else {
+          if (i === guideState.currentStep) {
+            card.style.display = 'block';
+            card.classList.add('active-step');
+          } else {
+            card.style.display = 'none';
+            card.classList.remove('active-step');
+          }
+        }
+      }
+
+      wizardControls.style.display = (guideState.viewMode === 'wizard') ? 'flex' : 'none';
+      btnPrevStep.style.visibility = (guideState.currentStep === 1) ? 'hidden' : 'visible';
+      btnNextStep.innerText = (guideState.currentStep === 10) ? 'Finish Guide ✓' : 'Next Step →';
+
+      const doneCount = Object.keys(guideState.completed).filter(k => guideState.completed[k]).length;
+      hudProgressText.innerText = `${doneCount} of 10 Steps Completed`;
+
+      renderPills();
+    }
+
+    // Step Pills Click
+    stepPillsContainer.addEventListener('click', e => {
+      const btn = e.target.closest('.step-pill');
+      if (!btn) return;
+      const step = parseInt(btn.getAttribute('data-step'), 10);
+      if (guideState.viewMode === 'list') {
+        document.getElementById('stepCard' + step).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      guideState.currentStep = step;
+      applyUI();
+    });
+
+    // Checkboxes
+    document.querySelectorAll('.check-done-box').forEach(cb => {
+      cb.addEventListener('change', e => {
+        const step = e.target.getAttribute('data-step');
+        guideState.completed[step] = e.target.checked;
+        applyUI();
+      });
+    });
+
+    // Nav buttons
+    btnNextStep.addEventListener('click', () => {
+      if (guideState.currentStep < 10) {
+        guideState.currentStep++;
+        applyUI();
+      }
+    });
+
+    btnPrevStep.addEventListener('click', () => {
+      if (guideState.currentStep > 1) {
+        guideState.currentStep--;
+        applyUI();
+      }
+    });
+
+    // View toggles
+    btnModeWizard.addEventListener('click', () => {
+      guideState.viewMode = 'wizard';
+      btnModeWizard.classList.add('active');
+      btnModeList.classList.remove('active');
+      applyUI();
+    });
+
+    btnModeList.addEventListener('click', () => {
+      guideState.viewMode = 'list';
+      btnModeList.classList.add('active');
+      btnModeWizard.classList.remove('active');
+      applyUI();
+    });
+
+    // Prompt Tabs
+    document.querySelectorAll('.sandbox-tab').forEach(tab => {
+      tab.addEventListener('click', e => {
+        document.querySelectorAll('.sandbox-tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        const key = e.target.getAttribute('data-prompt');
+        guideState.activePromptKey = key;
+        promptTextDisplay.innerText = guideState.prompts[key];
+      });
+    });
+
+    // Copy Prompt
+    btnCopyPrompt.addEventListener('click', () => {
+      navigator.clipboard.writeText(guideState.prompts[guideState.activePromptKey]).then(() => {
+        btnCopyPrompt.innerText = 'Copied!';
+        setTimeout(() => { btnCopyPrompt.innerText = 'Copy Prompt'; }, 1800);
+      });
+    });
+
+    // Initialize on load
+    applyUI();
+  </script>
+</body>
+</html>
