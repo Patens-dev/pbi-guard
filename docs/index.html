@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PBI Guard: The Business Logic Firewall for Power BI</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-base: #fbfbfe;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-subtle: #94a3b8;
+
+      --brand-dark: #121417;
+      --brand-glow-sky: #cfe6ff;
+      --brand-glow-lavender: #ece2fe;
+      --brand-glow-blush: #fde5e8;
+
+      --card-bg: rgba(255, 255, 255, 0.88);
+      --card-border: rgba(226, 232, 240, 0.85);
+      --card-shadow: 0 24px 48px -12px rgba(100, 116, 139, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.7);
+
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    .aurora-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 980px;
+      background:
+        radial-gradient(circle at 50% -8%, var(--brand-glow-sky) 0%, transparent 48%),
+        radial-gradient(circle at 14% 18%, var(--brand-glow-lavender) 0%, transparent 42%),
+        radial-gradient(circle at 86% 16%, var(--brand-glow-blush) 0%, transparent 42%);
+      opacity: 0.9;
+      z-index: -1;
+      pointer-events: none;
+      filter: blur(48px);
+    }
+
+    /* 1. NAVBAR */
+    .nav-wrapper {
+      position: fixed;
+      top: 24px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      z-index: 1000;
+      padding: 0 20px;
+      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    }
+
+    .nav-wrapper.nav-hidden {
+      transform: translateY(-140%);
+      opacity: 0;
+    }
+
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 840px;
+      padding: 8px 10px 8px 20px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.7);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--brand-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: color 0.2s ease;
+      cursor: pointer;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--text-main);
+    }
+
+    .nav-cta {
+      background: var(--brand-dark);
+      color: white;
+      text-decoration: none;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-cta:hover {
+      background: #27272a;
+      transform: translateY(-1px);
+    }
+
+    /* 2. HERO */
+    .hero {
+      padding: 160px 20px 45px;
+      text-align: center;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .hero-title {
+      font-family: var(--font-serif);
+      font-weight: 500;
+      font-size: clamp(38px, 5.5vw, 62px);
+      line-height: 1.12;
+      letter-spacing: -0.025em;
+      color: var(--text-main);
+      margin-bottom: 16px;
+    }
+
+    .hero-subtitle {
+      font-family: var(--font-serif);
+      font-size: clamp(22px, 3vw, 30px);
+      font-style: italic;
+      font-weight: 400;
+      color: #334155;
+      margin-bottom: 20px;
+    }
+
+    .hero-desc {
+      font-size: 16.5px;
+      color: var(--text-muted);
+      max-width: 540px;
+      margin: 0 auto 36px;
+      line-height: 1.55;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-github-primary {
+      background: var(--brand-dark);
+      color: #ffffff;
+      padding: 13px 26px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 10px 24px -6px rgba(18, 19, 22, 0.22);
+    }
+
+    .btn-github-primary:hover {
+      background: #27272a;
+      transform: translateY(-1px);
+    }
+
+    .btn-scroll-sim {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--text-main);
+      padding: 13px 24px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid rgba(203, 213, 225, 0.8);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-scroll-sim:hover {
+      background: #ffffff;
+      border-color: #94a3b8;
+    }
+
+    /* 3. SIMULATOR */
+    .sim-section {
+      max-width: 1000px;
+      margin: 40px auto 100px;
+      padding: 0 20px;
+    }
+
+    .sim-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+    }
+
+    .sim-toolbar {
+      padding: 12px 20px;
+      background: rgba(248, 250, 252, 0.9);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .sim-tabs-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sim-tab {
+      padding: 7px 15px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .sim-tab.active {
+      background: #ffffff;
+      color: var(--text-main);
+      border-color: rgba(203, 213, 225, 0.9);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .sim-body-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      min-height: 440px;
+      position: relative;
+    }
+
+    @media (max-width: 860px) {
+      .sim-body-grid { grid-template-columns: 1fr; }
+    }
+
+    .editor-pane {
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.55);
+      border-right: 1px solid rgba(226, 232, 240, 0.9);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .code-gutter-line { display: flex; gap: 18px; }
+    .line-no { color: #cbd5e1; user-select: none; text-align: right; width: 20px; flex-shrink: 0; }
+    .line-text { white-space: pre; }
+    .kwd { color: #7c3aed; font-weight: 600; }
+    .prop { color: #0284c7; }
+    .str { color: #059669; }
+    .cmt { color: #94a3b8; font-style: italic; }
+    .val { color: #d97706; }
+    .line-drift-alert {
+      background: rgba(244, 63, 94, 0.12);
+      border-radius: 4px;
+      padding: 0 4px;
+      border: 1px dashed rgba(244, 63, 94, 0.4);
+    }
+
+    .terminal-container {
+      position: relative;
+      background: #0b0f19;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .terminal-pane {
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow-y: auto;
+      transition: filter 0.3s ease;
+    }
+
+    .terminal-pane.blurred {
+      filter: blur(10px);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .terminal-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      background: rgba(11, 15, 25, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .terminal-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .btn-run-centered {
+      background: #ffffff;
+      color: #0b0f19;
+      border: none;
+      padding: 16px 34px;
+      border-radius: 999px;
+      font-size: 14.5px;
+      font-weight: 700;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.8);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-run-centered:hover {
+      transform: scale(1.04) translateY(-2px);
+      box-shadow: 0 20px 42px -6px rgba(56, 189, 248, 0.35);
+      background: #f8fafc;
+    }
+
+    .overlay-hint {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #94a3b8;
+      max-width: 260px;
+      line-height: 1.5;
+    }
+
+    .term-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 16px;
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .term-status-badge {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    .status-blocked { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-passed { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .term-logs {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      line-height: 1.6;
+    }
+
+    .log-entry { display: flex; gap: 8px; }
+    .log-dim { color: #64748b; }
+    .log-err { color: #ef4444; font-weight: 600; }
+    .log-ok { color: #10b981; font-weight: 600; }
+
+    .term-action-box {
+      margin-top: 16px;
+      padding: 14px;
+      background: #131b2e;
+      border-radius: 10px;
+      border-left: 3px solid #f43f5e;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .term-action-box.box-passed { border-left-color: #10b981; }
+
+    .btn-fix-action {
+      background: #38bdf8;
+      color: #0b0f19;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-fix-action:hover { background: #7dd3fc; }
+
+    .btn-reset-sim {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+      align-self: center;
+      margin-top: 4px;
+    }
+
+    /* 4. ARTICLES VIEW */
+    .view-container { display: block; }
+    .view-hidden { display: none !important; }
+
+    .articles-hero {
+      text-align: center;
+      padding: 140px 20px 40px;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .articles-grid {
+      max-width: 900px;
+      margin: 20px auto 80px;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .article-row-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 24px -6px rgba(100, 116, 139, 0.06);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .article-row-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--card-shadow);
+      border-color: #cbd5e1;
+    }
+
+    .article-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6366f1;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .article-title {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      line-height: 1.3;
+    }
+
+    .article-snippet {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .article-meta {
+      margin-top: 16px;
+      font-size: 12.5px;
+      color: var(--text-subtle);
+      display: flex;
+      gap: 16px;
+    }
+
+    .article-reader-container {
+      max-width: 760px;
+      margin: 130px auto 100px;
+      padding: 0 20px;
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 24px;
+      text-decoration: none;
+    }
+
+    .btn-back:hover { color: var(--text-main); }
+
+    .reader-body {
+      font-size: 16.5px;
+      line-height: 1.85;
+      color: #334155;
+    }
+
+    .reader-body p { margin-bottom: 22px; }
+    .reader-body h2, .reader-body h3 { font-family: var(--font-serif); font-size: 24px; color: var(--text-main); margin: 34px 0 14px; }
+    .reader-body ul, .reader-body ol { margin: 0 0 22px 24px; line-height: 1.8; }
+    .reader-body li { margin-bottom: 8px; }
+    .reader-body code { font-family: var(--font-mono); font-size: 14px; background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 4px; }
+
+    .article-end-cta {
+      margin-top: 60px;
+      padding: 44px 32px;
+      background:
+        radial-gradient(circle at 10% 20%, var(--brand-glow-blush) 0%, transparent 55%),
+        radial-gradient(circle at 90% 80%, var(--brand-glow-sky) 0%, transparent 50%),
+        rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      box-shadow: 0 20px 40px -10px rgba(100, 116, 139, 0.1);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-eyebrow {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6366f1;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .cta-heading {
+      font-family: var(--font-serif);
+      font-size: clamp(24px, 3.5vw, 32px);
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+
+    .cta-subtext {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin: 0 auto 28px;
+    }
+
+    .btn-article-guard-cta {
+      background: var(--brand-dark);
+      color: #ffffff;
+      padding: 15px 28px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 12px 28px -6px rgba(18, 19, 22, 0.28);
+      cursor: pointer;
+      border: none;
+      font-family: var(--font-sans);
+    }
+
+    .btn-article-guard-cta:hover {
+      background: #27272a;
+      transform: translateY(-2px);
+    }
+
+    footer {
+      border-top: 1px solid rgba(226, 232, 240, 0.8);
+      padding: 50px 20px 40px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .footer-inner {
+      max-width: 840px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="aurora-bg"></div>
+
+  <!-- 1. NAVBAR -->
+  <header class="nav-wrapper" id="navWrapper">
+    <nav class="navbar">
+      <a href="#/" class="nav-brand" id="navBrandLink">
+        <div class="brand-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span>PBI Guard</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#/" class="nav-link" id="navLinkHome">Overview</a></li>
+        <li><a href="#/simulator" class="nav-link" id="navLinkSim">Live Simulator</a></li>
+        <li><a href="#/articles" class="nav-link" id="navLinkArticles">Articles</a></li>
+      </ul>
+
+      <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" class="nav-cta">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+    </nav>
+  </header>
+
+  <!-- VIEW A: MAIN OVERVIEW -->
+  <div id="viewMain" class="view-container">
+    <section class="hero">
+      <h1 class="hero-title">Don’t worry about your BI data hallucinations.</h1>
+      <p class="hero-subtitle">Use PBI Guard to test your data.</p>
+      <p class="hero-desc">Lock your verified DAX formulas in simple YAML. Catch silent formula drift in Git before it hits production, completely offline.</p>
+      <div class="hero-actions">
+        <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" class="btn-github-primary">Star on GitHub</a>
+        <a href="#/simulator" class="btn-scroll-sim" id="btnHeroSimScroll">Try Live Simulation ↓</a>
+      </div>
+    </section>
+
+    <!-- LIVE SIMULATION -->
+    <section class="sim-section" id="simulator">
+      <div class="sim-card">
+        <div class="sim-toolbar">
+          <div class="sim-tabs-group">
+            <button class="sim-tab active" id="tabBtnTmdl">1. Financials.tmdl</button>
+            <button class="sim-tab" id="tabBtnYaml">2. pbi-guard.yaml</button>
+          </div>
+          <span style="font-size: 11.5px; color: var(--text-muted);">AST Contract Verification Engine</span>
+        </div>
+
+        <div class="sim-body-grid">
+          <div class="editor-pane" id="editorView"></div>
+          <div class="terminal-container">
+            <div class="terminal-overlay" id="termOverlay">
+              <button class="btn-run-centered" id="btnRunGuard">Run PBI Guard</button>
+              <p class="overlay-hint">Tests the raw TMDL definition against the YAML contract offline.</p>
+            </div>
+            <div class="terminal-pane blurred" id="termPane">
+              <div>
+                <div class="term-meta">
+                  <span>PRE-COMMIT AUDIT GATE</span>
+                  <span class="term-status-badge status-blocked" id="termBadge">PR BLOCKED</span>
+                </div>
+                <div class="term-logs" id="terminalLogs"></div>
+              </div>
+              <div class="term-action-box" id="termActionBox"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARTICLES HOME PREVIEW -->
+    <section class="articles-grid" style="margin-top: 40px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6366f1;">From the Blog</span>
+        <h2 style="font-family: var(--font-serif); font-size: 32px; font-weight: 500; margin-top: 6px;">Articles & Guides</h2>
+      </div>
+      <div id="homeArticlesList" style="display:flex; flex-direction:column; gap:22px;"></div>
+    </section>
+  </div>
+
+  <!-- VIEW B: ARTICLES HUB -->
+  <div id="viewArticles" class="view-container view-hidden">
+    <div class="articles-hero">
+      <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6366f1;">Documentation & Insights</span>
+      <h1 style="font-family: var(--font-serif); font-size: 44px; font-weight: 500; margin-top: 10px;">Articles & Guides</h1>
+      <p style="color: var(--text-muted); font-size: 16px; margin-top: 12px;">Technical essays on TMDL parsing, deterministic DAX validation, and preventing BI formula drift.</p>
+    </div>
+    <div class="articles-grid" id="fullArticlesList"></div>
+  </div>
+
+  <!-- VIEW C: ARTICLE READER -->
+  <div id="viewArticleReader" class="view-container view-hidden">
+    <div class="article-reader-container">
+      <a href="#/articles" class="btn-back">← Back to Articles</a>
+      <div id="readerHeader"></div>
+      <div class="reader-body" id="readerBody"></div>
+      <div class="article-end-cta">
+        <span class="cta-eyebrow">Prevent Formula Drift</span>
+        <h3 class="cta-heading">Protect your board-level KPIs today.</h3>
+        <p class="cta-subtext">Stop spending Sunday nights cross-referencing numbers in Excel or worrying about LLM formula mutations.</p>
+        <button class="btn-article-guard-cta" onclick="window.location.hash = '#/simulator'">
+          <span>Tired of AI hallucinating your PowerBI? Add the guardrails with PBI Guard →</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div style="font-weight: 700; color: var(--text-main);">PBI Guard Project</div>
+      <div>Open-source business logic firewall for Power BI and Fabric.</div>
+      <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" style="color: inherit; text-decoration: underline;">GitHub Repository</a>
+    </div>
+  </footer>
+
+  <script>
+    // 1. NAVBAR SCROLL
+    let lastScrollY = window.scrollY;
+    const navWrapper = document.getElementById('navWrapper');
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 60) {
+        if (navWrapper) navWrapper.classList.add('nav-hidden');
+      } else {
+        if (navWrapper) navWrapper.classList.remove('nav-hidden');
+      }
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    // 2. ARTICLES MANIFEST
+    const articlesManifest = [
+      {
+        slug: "why-excel-eyeballing-still-dominates-enterprise-bi",
+        file: "articles/article-01.html",
+        tag: "Architecture",
+        title: "Why Excel Eyeballing Still Dominates Enterprise BI",
+        snippet: "Despite decades of CI/CD, finance teams still dump data to Excel for manual VLOOKUP reconciliations. Here is the architectural reason why.",
+        date: "September 2026",
+        readTime: "6 min read"
+      },
+      {
+        slug: "the-danger-of-power-bi-mcp-and-copilot-in-vs-code",
+        file: "articles/article-03.html",
+        tag: "Agentic Workflows",
+        title: "How to Use AI to Handle Power BI (Interactive Guide)",
+        snippet: "Step-by-step interactive wizard: use VS Code and GitHub Copilot to generate entire Power BI TMDL models without touching the desktop GUI.",
+        date: "September 2026",
+        readTime: "5 min read"
+      },
+
+    ];
+
+    function renderArticlesList() {
+      const renderCard = art => `
+        <a href="#/articles/${art.slug}" class="article-row-card">
+          <span class="article-tag">${art.tag}</span>
+          <h3 class="article-title">${art.title}</h3>
+          <p class="article-snippet">${art.snippet}</p>
+          <div class="article-meta"><span>${art.readTime}</span> • <span>${art.tag}</span></div>
+        </a>
+      `;
+      const homeList = document.getElementById('homeArticlesList');
+      const fullList = document.getElementById('fullArticlesList');
+      if (homeList) homeList.innerHTML = articlesManifest.slice(0, 2).map(renderCard).join('');
+      if (fullList) fullList.innerHTML = articlesManifest.map(renderCard).join('');
+    }
+
+    // 3. ROUTER & ARTICLE LOADER
+    const viewMain = document.getElementById('viewMain');
+    const viewArticles = document.getElementById('viewArticles');
+    const viewArticleReader = document.getElementById('viewArticleReader');
+    const navLinkHome = document.getElementById('navLinkHome');
+    const navLinkSim = document.getElementById('navLinkSim');
+    const navLinkArticles = document.getElementById('navLinkArticles');
+
+    async function loadArticleContent(article) {
+      const readerHeader = document.getElementById('readerHeader');
+      const readerBody = document.getElementById('readerBody');
+      if (readerHeader) {
+        readerHeader.innerHTML = `
+          <span class="article-tag">${article.tag}</span>
+          <h1 style="font-family: var(--font-serif); font-size: 38px; line-height: 1.2; margin: 8px 0 16px;">${article.title}</h1>
+          <div style="font-size: 13px; color: var(--text-subtle); margin-bottom: 30px;">Published ${article.date} •${article.readTime} • By PBI Guard Core Team</div>
+        `;
+      }
+      if (readerBody) {
+        readerBody.innerHTML = '<p style="color:#64748b;">Loading article content...</p>';
+        try {
+          const res = await fetch(article.file);
+          if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+          const html = await res.text();
+          readerBody.innerHTML = html;
+          initGuideController();
+        } catch (err) {
+          readerBody.innerHTML = `<p style="color:#ef4444;">Could not load ${article.file}:${err.message}. If testing locally, please serve this folder using a local web server.</p>`;
+        }
+      }
+    }
+
+    function handleRoute() {
+      const hash = window.location.hash || '#/';
+      if (navLinkHome) navLinkHome.classList.remove('active');
+      if (navLinkSim) navLinkSim.classList.remove('active');
+      if (navLinkArticles) navLinkArticles.classList.remove('active');
+
+      if (viewMain) viewMain.classList.add('view-hidden');
+      if (viewArticles) viewArticles.classList.add('view-hidden');
+      if (viewArticleReader) viewArticleReader.classList.add('view-hidden');
+
+      if (hash.startsWith('#/articles/')) {
+        const slug = hash.replace('#/articles/', '').trim();
+        const art = articlesManifest.find(a => a.slug === slug);
+        if (art) {
+          if (viewArticleReader) viewArticleReader.classList.remove('view-hidden');
+          if (navLinkArticles) navLinkArticles.classList.add('active');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          loadArticleContent(art);
+        } else {
+          window.location.hash = '#/articles';
+        }
+      } else if (hash === '#/articles') {
+        if (viewArticles) viewArticles.classList.remove('view-hidden');
+        if (navLinkArticles) navLinkArticles.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (hash === '#/simulator') {
+        if (viewMain) viewMain.classList.remove('view-hidden');
+        if (navLinkSim) navLinkSim.classList.add('active');
+        setTimeout(() => {
+          const sim = document.getElementById('simulator');
+          if (sim) sim.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      } else {
+        if (viewMain) viewMain.classList.remove('view-hidden');
+        if (navLinkHome) navLinkHome.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    window.addEventListener('hashchange', handleRoute);
+
+    // 4. INTERACTIVE GUIDE CONTROLLER (Event Delegation: 100% resilient)
+    let guideState = {
+      currentStep: 1,
+      viewMode: 'wizard',
+      completed: {},
+      prompts: {
+        calendar: 'Inspect my model. Create a complete Calendar table in TMDL using CALENDARAUTO with Year, Month, and Quarter columns.',
+        measures: 'Look at the Sales table. Add three measures: Total Revenue, Total Cost, and Gross Margin percentage using the DIVIDE function.',
+        visual: 'Add a new card visual to page 1 bound to the Total Revenue measure.'
+      },
+      activePromptKey: 'calendar'
+    };
+
+    function initGuideController() {
+      const pillsContainer = document.getElementById('stepPillsContainer');
+      if (!pillsContainer) return; // Not on the guide article
+
+      guideState.currentStep = 1;
+      renderStepPills();
+      applyGuideUI();
+    }
+
+    function renderStepPills() {
+      const container = document.getElementById('stepPillsContainer');
+      if (!container) return;
+      let html = '';
+      for (let i = 1; i <= 10; i++) {
+        const isActive = (guideState.viewMode === 'wizard' && guideState.currentStep === i) ? 'active' : '';
+        const isDone = guideState.completed[i] ? 'completed' : '';
+        const checkIcon = guideState.completed[i] ? '✓ ' : '';
+        html += `<button class="step-pill ${isActive} ${isDone}" data-action="jump-step" data-step="${i}">${checkIcon}Step${i}</button>`;
+      }
+      container.innerHTML = html;
+    }
+
+    function applyGuideUI() {
+      for (let i = 1; i <= 10; i++) {
+        const card = document.getElementById('stepCard' + i);
+        if (!card) continue;
+        if (guideState.viewMode === 'list') {
+          card.style.display = 'block';
+          card.classList.remove('active-step');
+        } else {
+          if (i === guideState.currentStep) {
+            card.style.display = 'block';
+            card.classList.add('active-step');
+          } else {
+            card.style.display = 'none';
+            card.classList.remove('active-step');
+          }
+        }
+      }
+
+      const wizardControls = document.getElementById('wizardControls');
+      if (wizardControls) {
+        wizardControls.style.display = (guideState.viewMode === 'wizard') ? 'flex' : 'none';
+        const btnPrev = document.getElementById('btnPrevStep');
+        const btnNext = document.getElementById('btnNextStep');
+        if (btnPrev) btnPrev.style.visibility = (guideState.currentStep === 1) ? 'hidden' : 'visible';
+        if (btnNext) btnNext.innerText = (guideState.currentStep === 10) ? 'Finish Guide ✓' : 'Next Step →';
+      }
+
+      const count = Object.keys(guideState.completed).filter(k => guideState.completed[k]).length;
+      const hudText = document.getElementById('hudProgressText');
+      if (hudText) hudText.innerText = `${count} of 10 Steps Completed`;
+
+      renderStepPills();
+    }
+
+    // Event Delegation on readerBody
+    const readerBodyElem = document.getElementById('readerBody');
+    if (readerBodyElem) {
+      readerBodyElem.addEventListener('click', e => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.getAttribute('data-action');
+
+        if (action === 'jump-step') {
+          const step = parseInt(target.getAttribute('data-step'), 10);
+          if (guideState.viewMode === 'list') {
+            const card = document.getElementById('stepCard' + step);
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
+          guideState.currentStep = step;
+          applyGuideUI();
+        } else if (action === 'next-step') {
+          if (guideState.currentStep < 10) {
+            guideState.currentStep++;
+            applyGuideUI();
+          }
+        } else if (action === 'prev-step') {
+          if (guideState.currentStep > 1) {
+            guideState.currentStep--;
+            applyGuideUI();
+          }
+        } else if (action === 'set-view') {
+          const mode = target.getAttribute('data-view');
+          guideState.viewMode = mode;
+          const btnWiz = document.getElementById('btnModeWizard');
+          const btnList = document.getElementById('btnModeList');
+          if (btnWiz && btnList) {
+            btnWiz.classList.toggle('active', mode === 'wizard');
+            btnList.classList.toggle('active', mode === 'list');
+          }
+          applyGuideUI();
+        } else if (action === 'prompt-tab') {
+          const key = target.getAttribute('data-prompt');
+          guideState.activePromptKey = key;
+          const parent = target.parentNode;
+          if (parent) {
+            parent.querySelectorAll('.sandbox-tab').forEach(t => t.classList.remove('active'));
+            target.classList.add('active');
+          }
+          const disp = document.getElementById('promptTextDisplay');
+          if (disp) disp.innerText = guideState.prompts[key];
+        } else if (action === 'copy-prompt') {
+          const text = guideState.prompts[guideState.activePromptKey];
+          navigator.clipboard.writeText(text).then(() => {
+            const copyBtn = document.getElementById('btnCopyPrompt');
+            if (copyBtn) {
+              copyBtn.innerText = 'Copied!';
+              setTimeout(() => { copyBtn.innerText = 'Copy Prompt'; }, 1800);
+            }
+          });
+        }
+      });
+
+      readerBodyElem.addEventListener('change', e => {
+        if (e.target.classList.contains('check-done-box')) {
+          const step = e.target.getAttribute('data-step');
+          guideState.completed[step] = e.target.checked;
+          applyGuideUI();
+        }
+      });
+    }
+
+    // 5. LIVE SIMULATOR LOGIC
+    const simState = { isFixed: false, currentTab: 'tmdl' };
+    const editorView = document.getElementById('editorView');
+    const termOverlay = document.getElementById('termOverlay');
+    const termPane = document.getElementById('termPane');
+    const terminalLogs = document.getElementById('terminalLogs');
+    const termBadge = document.getElementById('termBadge');
+    const termActionBox = document.getElementById('termActionBox');
+    const btnRunGuard = document.getElementById('btnRunGuard');
+    const tabBtnTmdl = document.getElementById('tabBtnTmdl');
+    const tabBtnYaml = document.getElementById('tabBtnYaml');
+
+    function getTmdlLines(isFixed) {
+      if (!isFixed) {
+        return [
+          { no: 1, text: `<span class="kwd">table</span> Financials` },
+          { no: 2, text: `    <span class="kwd">lineageTag</span>: 4a9f-88b2-c100` },
+          { no: 3, text: `` },
+          { no: 4, text: `    <span class="cmt">// Base Metric</span>` },
+          { no: 5, text: `    <span class="kwd">measure</span> <span class="prop">'Gross Profit'</span> = [Total Sales] - [Total COGS]` },
+          { no: 6, text: `        <span class="kwd">formatString</span>: <span class="str">"$#,##0"</span>` },
+          { no: 7, text: `        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>` },
+          { no: 8, text: `` },
+          { no: 9, text: `    <span class="cmt">// Silent drift injected (* 1.05)</span>` },
+          { no: 10, alert: true, text: `    <span class="kwd">measure</span> <span class="prop">'Gross Margin %'</span> = DIVIDE([Gross Profit], [Total Sales], 0) * 1.05` },
+          { no: 11, text: `        <span class="kwd">formatString</span>: <span class="str">"0.0%"</span>` },
+          { no: 12, text: `        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>` }
+        ];
+      }
+      return [
+        { no: 1, text: `<span class="kwd">table</span> Financials` },
+        { no: 2, text: `    <span class="kwd">lineageTag</span>: 4a9f-88b2-c100` },
+        { no: 3, text: `` },
+        { no: 4, text: `    <span class="cmt">// Base Metric</span>` },
+        { no: 5, text: `    <span class="kwd">measure</span> <span class="prop">'Gross Profit'</span> = [Total Sales] - [Total COGS]` },
+        { no: 6, text: `        <span class="kwd">formatString</span>: <span class="str">"$#,##0"</span>` },
+        { no: 7, text: `        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>` },
+        { no: 8, text: `` },
+        { no: 9, text: `    <span class="cmt">// Reconciled formula</span>` },
+        { no: 10, text: `    <span class="kwd">measure</span> <span class="prop">'Gross Margin %'</span> = DIVIDE([Gross Profit], [Total Sales], 0)` },
+        { no: 11, text: `        <span class="kwd">formatString</span>: <span class="str">"0.0%"</span>` },
+        { no: 12, text: `        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>` }
+      ];
+    }
+
+    const yamlLines = [
+      { no: 1, text: `<span class="cmt"># pbi-guard.yaml</span>` },
+      { no: 2, text: `<span class="kwd">version</span>: <span class="val">1</span>` },
+      { no: 3, text: `` },
+      { no: 4, text: `<span class="kwd">contracts</span>:` },
+      { no: 5, text: `  - <span class="prop">measure</span>: <span class="str">"[Gross Margin %]"</span>` },
+      { no: 6, text: `    <span class="prop">table</span>: <span class="str">"Financials"</span>` },
+      { no: 7, text: `    <span class="prop">status</span>: <span class="val">certified</span>` },
+      { no: 8, text: `    <span class="prop">must_equal</span>: <span class="str">"DIVIDE([Gross Profit], [Total Sales], 0)"</span>` },
+      { no: 9, text: `    <span class="prop">forbid_patterns</span>:` },
+      { no: 10, text: `      - <span class="str">"* 1."</span>   <span class="cmt"># Disallows fudge factor multipliers</span>` },
+      { no: 11, text: `      - <span class="str">"+ "</span>     <span class="cmt"># Disallows manual plug values</span>` }
+    ];
+
+    function renderEditor() {
+      if (!editorView) return;
+      const lines = simState.currentTab === 'tmdl' ? getTmdlLines(simState.isFixed) : yamlLines;
+      let html = '';
+      lines.forEach(l => {
+        const alertClass = l.alert ? 'line-drift-alert' : '';
+        html += `<div class="code-gutter-line ${alertClass}"><span class="line-no">${l.no}</span><span class="line-text">${l.text}</span></div>`;
+      });
+      editorView.innerHTML = html;
+    }
+
+    function renderTerminal() {
+      if (!terminalLogs || !termBadge || !termActionBox) return;
+      if (!simState.isFixed) {
+        termBadge.className = 'term-status-badge status-blocked';
+        termBadge.innerText = 'FAIL (CONTRACT BREACH)';
+        terminalLogs.innerHTML = `
+          <div class="log-entry"><span class="log-dim">$</span> <span>pbi-guard check ./semantic-model</span></div>
+          <div class="log-entry"><span class="log-dim">>></span> <span>Parsing 12 TMDL definitions in 41ms...</span></div>
+          <div class="log-entry" style="margin-top:4px;"><span class="log-err">[FAIL]</span> <span>You have this error:</span></div>
+          <div style="color:#cbd5e1; font-size:11.5px; padding-left: 16px; border-left: 2px solid #ef4444; margin: 4px 0 8px 8px;">
+            Target: <code>Financials['Gross Margin %']</code><br/>
+            Contract Breached: Forbidden multiplier <span style="color:#f87171;">"* 1.05"</span> detected.<br/>
+            Expected: <code>DIVIDE([Gross Profit], [Total Sales], 0)</code>
+          </div>
+          <div class="log-entry"><span class="log-err">ERROR:</span> <span>Pull Request #42 blocked. Formulas do not match YAML.</span></div>
+        `;
+        termActionBox.className = 'term-action-box';
+        termActionBox.innerHTML = `
+          <div style="font-size:11.5px; color:#cbd5e1;"><strong style="color:#ffffff;">Action Required:</strong> Revert the unauthorized multiplier to match the certified YAML baseline.</div>
+          <button class="btn-fix-action" id="btnFixFormula">Fix Drift & Re-run</button>
+        `;
+        const fixBtn = document.getElementById('btnFixFormula');
+        if (fixBtn) {
+          fixBtn.addEventListener('click', () => {
+            simState.isFixed = true;
+            simState.currentTab = 'tmdl';
+            if (tabBtnTmdl) tabBtnTmdl.classList.add('active');
+            if (tabBtnYaml) tabBtnYaml.classList.remove('active');
+            renderEditor();
+            terminalLogs.innerHTML = `<div class="log-entry"><span class="log-dim">$</span> <span>Formula updated. Re-evaluating AST contract...</span></div>`;
+            setTimeout(renderTerminal, 200);
+          });
+        }
+      } else {
+        termBadge.className = 'term-status-badge status-passed';
+        termBadge.innerText = 'PASSED (100% VERIFIED)';
+        terminalLogs.innerHTML = `
+          <div class="log-entry"><span class="log-dim">$</span> <span>pbi-guard check ./semantic-model</span></div>
+          <div class="log-entry"><span class="log-dim">>></span> <span>Parsing 12 TMDL definitions in 37ms...</span></div>
+          <div class="log-entry"><span class="log-ok">[PASS]</span> <span>Financials['Gross Profit'] (Certified)</span></div>
+          <div class="log-entry"><span class="log-ok">[PASS]</span> <span>Financials['Gross Margin %'] (Contract Verified)</span></div>
+          <div class="log-entry" style="margin-top:6px;"><span class="log-ok">SUCCESS:</span> <span>All 48 formulas match certified contracts. Safe to merge!</span></div>
+        `;
+        termActionBox.className = 'term-action-box box-passed';
+        termActionBox.innerHTML = `
+          <div style="font-size:11.5px; color:#cbd5e1;"><strong style="color:#ffffff;">Model Safe:</strong> Zero drift detected. The CI/CD pipeline approved this Pull Request.</div>
+          <button class="btn-reset-sim" id="btnResetSimulation">↺ Reset Simulation to Test Again</button>
+        `;
+        const resetBtn = document.getElementById('btnResetSimulation');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', () => {
+            simState.isFixed = false;
+            simState.currentTab = 'tmdl';
+            if (tabBtnTmdl) tabBtnTmdl.classList.add('active');
+            if (tabBtnYaml) tabBtnYaml.classList.remove('active');
+            if (termOverlay) termOverlay.classList.remove('hidden');
+            if (termPane) termPane.classList.add('blurred');
+            renderEditor();
+          });
+        }
+      }
+    }
+
+    if (btnRunGuard) {
+      btnRunGuard.addEventListener('click', () => {
+        if (termOverlay) termOverlay.classList.add('hidden');
+        if (termPane) termPane.classList.remove('blurred');
+        renderTerminal();
+      });
+    }
+
+    if (tabBtnTmdl) {
+      tabBtnTmdl.addEventListener('click', () => {
+        simState.currentTab = 'tmdl';
+        tabBtnTmdl.classList.add('active');
+        if (tabBtnYaml) tabBtnYaml.classList.remove('active');
+        renderEditor();
+      });
+    }
+
+    if (tabBtnYaml) {
+      tabBtnYaml.addEventListener('click', () => {
+        simState.currentTab = 'yaml';
+        tabBtnYaml.classList.add('active');
+        if (tabBtnTmdl) tabBtnTmdl.classList.remove('active');
+        renderEditor();
+      });
+    }
+
+    // INIT
+    renderArticlesList();
+    renderEditor();
+    handleRoute();
+  </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<p>
+  Most teams find out a Power BI calculation is broken when an executive sends an angry message on Monday morning.
+  Someone touched a measure on Friday afternoon. The report did not crash. The visual loaded fine. The numbers were just wrong by four percent.
+</p>
+
+<h3>The Real Problem With Changing Reports</h3>
+<p>
+  Power BI models are shared by multiple people. One developer wants to fix a small edge case on an operations page. They open the calculation and add a quick filter.
+  That small edit quietly changes the numbers on the finance dashboard. Nobody notices until the board pack goes out.
+</p>
+<p>
+  Software engineers write automated unit tests to keep their code safe. Power BI developers usually have no safety net at all.
+</p>
+
+<h3>What People Do Today (And Why It Hurts)</h3>
+<p>
+  Teams try a few different ways to catch broken calculations today. Here is what is available and how people use them:
+</p>
+
+<ol>
+  <li>
+    <strong>Eyeballing numbers in Excel:</strong>
+    You open your Power BI report and export the table to a spreadsheet. Then you log into your database or ERP, run a SQL query, and export those numbers to a second sheet. You write a subtraction formula between column A and column B. If the difference is zero, you feel safe.
+    The problem is time. You have to repeat this entire manual export routine every single time someone touches the file.
+  </li>
+  <li>
+    <strong>Tabular Editor Best Practice Analyzer:</strong>
+    You download Tabular Editor and write rules using C# scripts or LINQ queries. You run these rules against your model metadata.
+    This is great for checking technical hygiene. It checks if your columns have descriptions or if formatting strings are present. It does not check if your math contract stays intact. It cannot tell you if Gross Profit was altered from Sales minus COGS.
+  </li>
+  <li>
+    <strong>Query testing with DAX or PQL:</strong>
+    You write test queries that run against a live workspace using XMLA endpoints.
+    The problem is data volatility. If your source database loads new transactions overnight, your test numbers change and the check fails, even when your formula is completely fine. It also requires an active cloud database connection, user permissions, and paid capacity to run.
+  </li>
+</ol>
+
+<h3>Why You Should Use PBI-Guard</h3>
+<p>
+  PBI-Guard takes a completely different path. Power BI now saves datasets as plain text TMDL files. PBI-Guard reads those text files directly on your machine.
+</p>
+
+<ul>
+  <li>
+    <strong>Pure offline speed:</strong> It parses the formula tree in under 50 milliseconds. It does not connect to a database. It does not need Azure login tokens or cloud capacity.
+  </li>
+  <li>
+    <strong>Simple YAML rules:</strong> You write your rules in plain English syntax. You define that Gross Profit must equal Sales minus COGS. You define that nobody can put manual multipliers like 1.05 inside a measure.
+  </li>
+  <li>
+    <strong>Built for Git:</strong> You drop PBI-Guard into your pre-commit hook or GitHub Actions pipeline. If a junior analyst or an AI tool alters a protected formula, git rejects the commit right on their machine.
+  </li>
+</ul>
+
+<p>
+  You verify your numbers once in Excel when you first build the model. Then you lock the formula with PBI-Guard so you never have to do that manual Excel check again.
+</p>
