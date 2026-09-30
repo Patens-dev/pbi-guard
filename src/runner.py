@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .assertions import ASSERTION_REGISTRY
 from .formatter import fmt
@@ -12,16 +12,10 @@ def run_suite(
     config: Dict[str, Any],
     verbose: bool = False,
     report_path: Optional[Path] = None,
-) -> bool:
+) -> Tuple[bool, List[AssertionResult]]:
     assertions = config.get("assertions", [])
     if not assertions:
-        print(f"{fmt.YELLOW}Warning:{fmt.RESET} No assertions defined in config.")
-        return True
-
-    print(
-        f"\n{fmt.BOLD}Model Summary:{fmt.RESET} {len(model.tables)} table(s), "
-        f"{len(model.measures)} measure(s) parsed.\n"
-    )
+        return True, []
 
     results: List[AssertionResult] = []
     for item in assertions:
@@ -65,33 +59,9 @@ def run_suite(
                 )
             )
 
-    for res in results:
-        if res.is_error:
-            print(f"{fmt.error_tag()} {res.name}\n       └── {fmt.YELLOW}Error: {res.reason}{fmt.RESET}")
-        elif res.passed:
-            print(f"{fmt.pass_tag()} {res.name}")
-            if verbose:
-                print(f"       └── {fmt.GREEN}OK{fmt.RESET}")
-        else:
-            print(f"{fmt.fail_tag()} {res.name}")
-            if res.expected:
-                fmt.print_diff("Expected", res.expected, fmt.GREEN)
-            if res.actual:
-                fmt.print_diff("Actual  ", res.actual, fmt.RED)
-            print()
-
-    total = len(results)
-    passed_count = sum(1 for r in results if r.passed)
-    failed_count = total - passed_count
-    summary_color = fmt.GREEN if failed_count == 0 else fmt.RED
-
-    print(
-        f"\n{fmt.BOLD}Summary:{fmt.RESET} {summary_color}{passed_count}/{total} passed{fmt.RESET}, "
-        f"{failed_count} failed.\n"
-    )
+    failed_count = sum(1 for r in results if not r.passed or r.is_error)
 
     if report_path:
-        out_file = generate_report(results, model, config, report_path)
-        print(f"{fmt.BOLD}Audit Sign-Off Report Exported:{fmt.RESET} {out_file}\n")
+        generate_report(results, model, config, report_path)
 
-    return failed_count == 0
+    return failed_count == 0, results

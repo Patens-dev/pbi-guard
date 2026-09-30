@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>PBI Guard | Semantic Governance & Rule Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap"
+          rel="stylesheet">
+    <!-- Optional CDN YAML Parser with clean backend fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #fbfbfe;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-subtle: #94a3b8;
+
+            --brand-dark: #121417;
+            --brand-glow-sky: #cfe6ff;
+            --brand-glow-lavender: #ece2fe;
+            --brand-glow-blush: #fde5e8;
+
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --card-border: rgba(226, 232, 240, 0.85);
+            --card-shadow: 0 20px 40px -12px rgba(100, 116, 139, 0.1), 0 0 0 1px rgba(226, 232, 240, 0.7);
+
+            --danger: #e11d48;
+            --danger-bg: #fff1f2;
+            --danger-border: #fecdd3;
+            --danger-text: #9f1239;
+
+            --success: #059669;
+            --success-bg: #ecfdf5;
+            --success-border: #a7f3d0;
+            --success-text: #065f46;
+
+            --warning: #d97706;
+            --warning-bg: #fffbeb;
+            --warning-border: #fde68a;
+            --warning-text: #92400e;
+
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-bg: #eef2ff;
+            --primary-border: #c7d2fe;
+
+            --font-title: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            --font-error: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: var(--font-title);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 980px;
+            background: radial-gradient(circle at 50% -8%, var(--brand-glow-sky) 0%, transparent 48%),
+            radial-gradient(circle at 14% 18%, var(--brand-glow-lavender) 0%, transparent 42%),
+            radial-gradient(circle at 86% 16%, var(--brand-glow-blush) 0%, transparent 42%);
+            opacity: 0.9;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(48px);
+        }
+
+        .nav-wrapper {
+            position: sticky;
+            top: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            z-index: 100;
+            padding: 0 24px;
+            margin-bottom: 24px;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1400px;
+            padding: 10px 18px 10px 22px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            border-radius: 999px;
+            box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.7);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .brand-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--brand-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 10px rgba(18, 20, 23, 0.15);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            color: var(--text-muted);
+            padding: 3px 10px;
+            background: rgba(241, 245, 249, 0.8);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 999px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            font-family: var(--font-title);
+            transition: all 0.18s ease;
+            text-decoration: none;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 11.5px;
+            border-radius: 8px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: rgba(203, 213, 225, 0.8);
+            color: var(--text-main);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+
+        .btn-secondary:hover {
+            background: #ffffff;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--brand-dark);
+            color: #ffffff;
+            box-shadow: 0 6px 16px -4px rgba(18, 20, 23, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: #27272a;
+            transform: translateY(-1px);
+        }
+
+        .btn-indigo {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .btn-indigo:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger-bg);
+            border-color: var(--danger-border);
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #ffe4e6;
+            border-color: #fda4af;
+            transform: translateY(-1px);
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .banner {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.02);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 960px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 28px 52px -12px rgba(100, 116, 139, 0.16), 0 0 0 1px rgba(226, 232, 240, 0.9);
+        }
+
+        .metric-label {
+            font-size: 11.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .metric-val {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-main);
+            margin: 4px 0 2px;
+        }
+
+        .metric-val.fail {
+            color: var(--danger);
+        }
+
+        .metric-val.pass {
+            color: var(--success);
+        }
+
+        .metric-desc {
+            font-size: 12px;
+            color: var(--text-subtle);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 6px;
+            letter-spacing: -0.01em;
+        }
+
+        .target-group-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .target-header {
+            background: rgba(248, 250, 252, 0.85);
+            border-bottom: 1px solid var(--card-border);
+            padding: 14px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .target-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .target-badge {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 3px 8px;
+            background: #ffffff;
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: var(--font-title);
+        }
+
+        .target-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .target-fail-pill {
+            font-size: 11.5px;
+            font-weight: 700;
+            background: var(--danger-bg);
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
+            padding: 3px 10px;
+            border-radius: 999px;
+        }
+
+        .breach-item {
+            padding: 18px 22px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .breach-item:last-child {
+            border-bottom: none;
+        }
+
+        .breach-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12.5px;
+        }
+
+        .tag-category {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .tag-drift {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
+        .tag-policy {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
+        }
+
+        .tag-governance {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border: 1px solid var(--primary-border);
+        }
+
+        .rule-name {
+            color: var(--text-muted);
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+
+        .diagnosis-box {
+            background: #fff5f5;
+            border-left: 3px solid var(--danger);
+            padding: 10px 14px;
+            border-radius: 0 8px 8px 0;
+            font-size: 12.5px;
+            color: var(--danger-text);
+            line-height: 1.55;
+            font-family: var(--font-error);
+        }
+
+        .diff-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 860px) {
+            .diff-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .diff-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .diff-pane-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .diff-pane-title.exp {
+            color: var(--success);
+        }
+
+        .diff-pane-title.act {
+            color: var(--danger);
+        }
+
+        .code-box {
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-family: var(--font-error);
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .code-box.exp {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+        }
+
+        .code-box.act {
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            color: #b91c1c;
+        }
+
+        .sim-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .sim-toolbar {
+            padding: 12px 20px;
+            background: rgba(248, 250, 252, 0.9);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .sim-tabs-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sim-tab {
+            padding: 7px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: var(--font-title);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .sim-tab:hover {
+            color: var(--text-main);
+        }
+
+        .sim-tab.active {
+            background: #ffffff;
+            color: var(--text-main);
+            border-color: rgba(203, 213, 225, 0.9);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .sim-body-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            min-height: 400px;
+        }
+
+        @media (max-width: 860px) {
+            .sim-body-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .editor-pane {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.55);
+            border-right: 1px solid rgba(226, 232, 240, 0.9);
+            font-family: var(--font-error);
+            font-size: 12px;
+            line-height: 1.7;
+            max-height: 480px;
+            overflow-y: auto;
+        }
+
+        .code-gutter-line {
+            display: flex;
+            gap: 16px;
+        }
+
+        .line-no {
+            color: #cbd5e1;
+            user-select: none;
+            text-align: right;
+            width: 26px;
+            flex-shrink: 0;
+        }
+
+        .line-text {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .kwd {
+            color: #7c3aed;
+            font-weight: 600;
+        }
+
+        .val {
+            color: #d97706;
+        }
+
+        .cmt {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .terminal-container {
+            background: #0b0f19;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            justify-content: space-between;
+            font-family: var(--font-error);
+            font-size: 11.5px;
+        }
+
+        .term-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 14px;
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .term-status-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 700;
+        }
+
+        .status-blocked {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-passed {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .terminal-logs {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            max-height: 280px;
+            line-height: 1.6;
+        }
+
+        .log-line {
+            display: flex;
+            gap: 8px;
+        }
+
+        .log-dim {
+            color: #64748b;
+        }
+
+        .log-err {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .log-ok {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        /* ==========================================================================
+           SPLIT STUDIO: LOW-CODE BUILDER & RAW YAML
+           ========================================================================== */
+        .rules-studio-panel {
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+        }
+
+        .studio-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--card-border);
+            background: #f8fafc;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .view-mode-pills {
+            display: inline-flex;
+            background: rgba(226, 232, 240, 0.6);
+            border-radius: 999px;
+            padding: 3px;
+            gap: 2px;
+        }
+
+        .view-mode-btn {
+            border: none;
+            background: transparent;
+            font-family: var(--font-title);
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .view-mode-btn.active {
+            background: #ffffff;
+            color: var(--text-main);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .recipe-chips-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 10px 20px;
+            background: rgba(248, 250, 252, 0.5);
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .recipe-chip {
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            background: #ffffff;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .recipe-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .studio-split-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 520px;
+        }
+
+        .studio-split-container.view-lowcode {
+            grid-template-columns: 1fr;
+        }
+
+        .studio-split-container.view-lowcode .yaml-studio-col {
+            display: none !important;
+        }
+
+        .studio-split-container.view-yaml {
+            grid-template-columns: 1fr;
+        }
+
+        .studio-split-container.view-yaml .lowcode-studio-col {
+            display: none !important;
+        }
+
+        .lowcode-studio-col {
+            padding: 20px;
+            border-right: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            max-height: 680px;
+            background: #fafbfe;
+        }
+
+        .rule-form-card {
+            background: #ffffff;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-row-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .form-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input, .form-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(203, 213, 225, 0.9);
+            font-size: 12.5px;
+            font-family: var(--font-title);
+            color: var(--text-main);
+            background: #ffffff;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .form-input.mono {
+            font-family: var(--font-error);
+            font-size: 12px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12.5px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .active-rules-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .rule-item-card {
+            background: #ffffff;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: all 0.15s ease;
+        }
+
+        .rule-item-card:hover {
+            border-color: var(--primary-border);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.06);
+        }
+
+        .rule-item-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .rule-item-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .rule-item-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pill-chip {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-family: var(--font-error);
+            letter-spacing: 0.02em;
+        }
+
+        .pill-target {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .pill-call {
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+        }
+
+        .rule-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-icon-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+        }
+
+        .action-icon-btn:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
+        }
+
+        .action-icon-btn.danger:hover {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .yaml-studio-col {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #ffffff;
+            height: 100%;
+        }
+
+        .yaml-editor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .yaml-textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 480px;
+            background: #0f172a;
+            color: #f8fafc;
+            border: 1px solid rgba(30, 41, 59, 0.9);
+            border-radius: 14px;
+            padding: 16px;
+            font-family: var(--font-error);
+            font-size: 12px;
+            line-height: 1.65;
+            resize: vertical;
+            tab-size: 2;
+        }
+
+        .yaml-textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        }
+
+        .dirty-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+
+        .dirty-indicator.clean {
+            color: var(--success);
+        }
+
+        .dirty-indicator.dirty {
+            color: var(--warning);
+        }
+
+        /* ACCORDION */
+        details {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.02);
+        }
+
+        summary {
+            padding: 14px 22px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        summary:hover {
+            background: rgba(248, 250, 252, 0.8);
+            color: var(--text-main);
+        }
+
+        .pass-container {
+            padding: 12px 22px 18px;
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pass-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: rgba(248, 250, 252, 0.9);
+            border-radius: 8px;
+            font-size: 12.5px;
+            border: 1px solid rgba(226, 232, 240, 0.7);
+        }
+
+        /* MODALS */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: #ffffff;
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            width: 820px;
+            max-width: 92vw;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            overflow: hidden;
+            box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.2);
+        }
+
+        .modal-header {
+            padding: 16px 22px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 18px 22px;
+            background: #0b0f19;
+            font-family: var(--font-error);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            overflow-y: auto;
+            height: 500px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+<div class="aurora-bg"></div>
+
+<!-- NAVBAR -->
+<header class="nav-wrapper">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <span>PBI Guard</span>
+            <span class="status-indicator">
+          <span class="status-dot"></span> Watching TMDL
+        </span>
+        </div>
+
+        <div class="nav-actions">
+            <button class="btn btn-secondary" onclick="viewLogsModal()">Logs</button>
+            <button class="btn btn-secondary" onclick="freezeBaseline()">Freeze Baseline</button>
+            <button class="btn btn-secondary" onclick="reVerify()">Re-Verify</button>
+            <button class="btn btn-secondary" onclick="refreshService()">Restart</button>
+            <button class="btn btn-danger" onclick="stopService()">Stop</button>
+        </div>
+    </nav>
+</header>
+
+<main>
+    <div id="notifBanner" class="banner" style="display:none;">
+        <span>Desktop notifications disabled. Enable them to track changes during Ctrl+S.</span>
+        <button class="btn btn-primary" onclick="requestNotificationAccess()">Enable</button>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <span class="metric-label">Drift Status</span>
+            <span class="metric-val" id="valRatio">0 / 0</span>
+            <span class="metric-desc" id="valRatioDesc">Failing / Total Assertions</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Model Target</span>
+            <span class="metric-val" id="modelNameText" style="font-size:18px;">—</span>
+            <span class="metric-desc" id="modelPathText"
+                  style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Detecting workspace...</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Total Measures</span>
+            <span class="metric-val" id="valTotalMeasures">—</span>
+            <span class="metric-desc">Parsed from TMDL files</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-label">Last Verification</span>
+            <span class="metric-val" id="lastCheckTimeText">—</span>
+            <span class="metric-desc" id="valLatency">— ms evaluation</span>
+        </div>
+    </div>
+
+    <!-- Live Save Notice -->
+    <div id="saveDiffAlert" class="banner"
+         style="display:none; border-color: var(--primary-border); background: var(--primary-bg);">
+        <div>
+            <strong style="color: var(--primary);">Save Detected:</strong>
+            <span id="saveSummaryDesc" style="margin-left: 6px; color: var(--text-main);"></span>
+        </div>
+        <span id="saveSummaryTime" style="color: var(--text-muted); font-size: 11.5px;"></span>
+    </div>
+
+    <!-- FAILURES -->
+    <section id="failuresSection" style="display:none;">
+        <div class="section-title">
+            <span style="color: var(--danger);">Contract Breaches (<span id="failCountBadge">0</span>)</span>
+        </div>
+        <div id="failuresList" style="margin-top: 12px;"></div>
+    </section>
+
+    <!-- UNCERTIFIED -->
+    <section id="uncertifiedSection" style="display:none;">
+        <div class="section-title">
+            <span style="color: var(--warning);">Unpinned Measures</span>
+        </div>
+        <div id="uncertifiedList" style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;"></div>
+    </section>
+
+    <!-- UNIFIED INSPECTOR & SPLIT RULE STUDIO -->
+    <section class="sim-card">
+        <div class="sim-toolbar">
+            <div class="sim-tabs-group">
+                <button class="sim-tab active" id="tabBtnTmdl" onclick="switchSimTab('tmdl')">TMDL Definition</button>
+                <button class="sim-tab" id="tabBtnYaml" onclick="switchSimTab('yaml')">pbi-guard.lock.yml</button>
+                <button class="sim-tab" id="tabBtnRules" onclick="switchSimTab('rules')">Governance & Test Studio
+                    (pbi_tests.yml)
+                </button>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+                <select id="tmdlFileSelect" onchange="onTmdlFileSelect(this.value)"
+                        style="display:inline-block; background:#ffffff; border:1px solid rgba(203,213,225,0.8); border-radius:6px; padding:4px 8px; font-size:11.5px; font-family:var(--font-error); color:var(--text-main); cursor:pointer;">
+                    <option value="">Loading files...</option>
+                </select>
+                <span style="color: var(--text-muted); font-size: 11.5px;">AST Contract Engine</span>
+            </div>
+        </div>
+
+        <!-- CODE INSPECTOR (TMDL / LOCKFILE) -->
+        <div class="sim-body-grid" id="inspectorCodeView">
+            <div class="editor-pane" id="editorView"></div>
+            <div class="terminal-container">
+                <div>
+                    <div class="term-meta">
+                        <span>LIVE AUDIT GATE</span>
+                        <span class="term-status-badge status-passed" id="termStatusBadge">100% VERIFIED</span>
+                    </div>
+                    <div class="terminal-logs" id="terminalLogs"></div>
+                </div>
+                <div style="border-top: 1px solid #1e293b; padding-top: 12px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span id="termSummaryText" style="color: #94a3b8; font-size: 11.5px;">Verification idle.</span>
+                    <button class="btn btn-secondary" onclick="reVerify()"
+                            style="font-size: 11px; padding: 4px 10px; border-radius: 6px;">Run Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SPLIT STUDIO: LOW-CODE BUILDER & RAW YAML -->
+        <div class="rules-studio-panel" id="rulesStudioPanel" style="display: none;">
+            <!-- Top Controls -->
+            <div class="studio-topbar">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div class="view-mode-pills">
+                        <button class="view-mode-btn active" id="btnModeSplit" onclick="setStudioViewMode('split')">
+                            Split View
+                        </button>
+                        <button class="view-mode-btn" id="btnModeLowCode" onclick="setStudioViewMode('lowcode')">
+                            Low-Code Form
+                        </button>
+                        <button class="view-mode-btn" id="btnModeYaml" onclick="setStudioViewMode('yaml')">Raw YAML
+                        </button>
+                    </div>
+
+                    <div id="draftStatusBadge" class="dirty-indicator clean">
+                        <span style="font-size:8px;">●</span>
+                        <span id="draftStatusText">In Sync with Workspace</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="discardDraftChanges()">Discard</button>
+                    <button class="btn btn-indigo btn-sm" onclick="saveGovernanceRules()">Save & Apply (Ctrl+S)</button>
+                </div>
+            </div>
+
+            <!-- Quick Recipe Bar -->
+            <div class="recipe-chips-wrapper">
+                <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:4px;">Quick Presets:</span>
+                <button class="recipe-chip" onclick="applyPresetRecipe('safe_divide')">✨ Safe DIVIDE()</button>
+                <button class="recipe-chip" onclick="applyPresetRecipe('forbid_magic')">🚫 Ban Magic Numbers</button>
+                <button class="recipe-chip" onclick="applyPresetRecipe('currency_format')">💲 Currency Format</button>
+                <button class="recipe-chip" onclick="applyPresetRecipe('naming_prefix')">🏷️ Naming Convention</button>
+                <button class="recipe-chip" onclick="applyPresetRecipe('no_calculate')">⚡ Ban CALCULATE in Measures
+                </button>
+            </div>
+
+            <!-- Split Work Area -->
+            <div class="studio-split-container" id="studioSplitContainer">
+                <!-- LEFT: Low-Code Studio -->
+                <div class="lowcode-studio-col">
+                    <!-- Rule Creator / Editor Card -->
+                    <div class="rule-form-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span id="formCardHeading"
+                                  style="font-size:13px; font-weight:700; color:var(--text-main);">Create New Governance Rule</span>
+                            <span id="editingRuleIndexBadge" style="display:none;" class="pill-chip pill-call">EDITING #1</span>
+                        </div>
+
+                        <div class="form-row">
+                            <label class="form-label">Rule Title / Description</label>
+                            <input type="text" id="builderRuleName" class="form-input"
+                                   placeholder="e.g. Enforce safe division on all profit metrics"/>
+                        </div>
+
+                        <div class="form-row-grid">
+                            <div class="form-row">
+                                <label class="form-label">Rule Type</label>
+                                <select id="builderRuleType" class="form-select" onchange="onRuleTypeChanged()">
+                                    <option value="dax_rule">DAX AST Policy (dax_rule)</option>
+                                    <option value="measure_format">Measure Format (measure_format)</option>
+                                    <option value="measure_naming">Naming Convention (measure_naming)</option>
+                                    <option value="column_usage_rule">Column Usage Architecture (column_usage_rule)
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="form-label">Target Scope Selection</label>
+                                <select id="builderTargetMode" class="form-select" onchange="onTargetModeChanged()">
+                                    <option value="pattern">Pattern Wildcard(s)</option>
+                                    <option value="specific">Pick Specific Measure</option>
+                                    <option value="all">All Measures (*)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Target Pattern Input or Model Picker -->
+                        <div class="form-row" id="rowTargetPattern">
+                            <label class="form-label">Measure Match Pattern (comma-separated)</label>
+                            <input type="text" id="builderTargetPattern" class="form-input mono"
+                                   placeholder="*Margin*, *Ratio*, *%*"/>
+                        </div>
+
+                        <div class="form-row" id="rowTargetSpecific" style="display:none;">
+                            <label class="form-label">Choose Active Measure</label>
+                            <select id="builderTargetMeasureSelect" class="form-select"></select>
+                        </div>
+
+                        <!-- Dynamic Config: DAX Rules -->
+                        <div id="sectionDaxRuleConfig" style="display:flex; flex-direction:column; gap:10px;">
+                            <div class="form-row-grid">
+                                <div class="form-row">
+                                    <label class="form-label">Must Call Function</label>
+                                    <input type="text" id="builderMustCall" class="form-input mono"
+                                           placeholder="e.g. DIVIDE, USERELATIONSHIP"/>
+                                </div>
+                                <div class="form-row">
+                                    <label class="form-label">Forbid Function Calls</label>
+                                    <input type="text" id="builderForbidCalls" class="form-input mono"
+                                           placeholder="e.g. CALCULATE, ALL"/>
+                                </div>
+                            </div>
+
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="builderForbidMagic"
+                                           onchange="toggleAllowedLiteralsRow()"/>
+                                    <span>Forbid Hardcoded Magic Numbers / Scalar Adjustments</span>
+                                </label>
+                                <div id="rowAllowedLiterals" style="display:none;" class="form-row">
+                                    <label class="form-label" style="font-size:10px;">Allowed Numerical Constants
+                                        (comma-separated)</label>
+                                    <input type="text" id="builderAllowedLiterals" class="form-input mono"
+                                           placeholder="0, 1"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Config: Formatting -->
+                        <div id="sectionFormatConfig" style="display:none;" class="form-row">
+                            <label class="form-label">Required Format Pattern (Regex or Literal)</label>
+                            <input type="text" id="builderRequiredFormat" class="form-input mono"
+                                   placeholder="e.g. ^\\$#,##0.*|^0\\.00%"/>
+                        </div>
+
+                        <!-- Dynamic Config: Naming -->
+                        <div id="sectionNamingConfig" style="display:none;" class="form-row-grid">
+                            <div class="form-row">
+                                <label class="form-label">Must Start With (Prefix)</label>
+                                <input type="text" id="builderPrefix" class="form-input" placeholder="e.g. FX_ or Dim"/>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Must End With (Suffix)</label>
+                                <input type="text" id="builderSuffix" class="form-input" placeholder="e.g. _YoY or %"/>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+                            <button id="btnCancelEdit" class="btn btn-secondary btn-sm" style="display:none;"
+                                    onclick="cancelRuleEdit()">Cancel Edit
+                            </button>
+                            <button id="btnAddRule" class="btn btn-primary btn-sm" onclick="commitBuilderRule()">+ Add
+                                Rule to Suite
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Rules Visual Cards -->
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Configured Assertions (<span
+                                    id="visualRulesCount">0</span>)</span>
+                            <span style="font-size:11px; color:var(--text-subtle);">Click rule to edit</span>
+                        </div>
+                        <div id="activeRulesList" class="active-rules-container"></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Raw YAML Editor -->
+                <div class="yaml-studio-col">
+                    <div class="yaml-editor-header">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <strong style="font-size:13px; color:var(--text-main);">Raw Contract</strong>
+                            <span class="pill-chip pill-target">pbi_tests.yml</span>
+                        </div>
+                        <span id="yamlSyntaxStatus" style="font-size:11px; font-weight:600; color:var(--success);">✓ Valid YAML</span>
+                    </div>
+
+                    <textarea id="rulesYamlInput" class="yaml-textarea" spellcheck="false"
+                              oninput="onYamlRawInput()"></textarea>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--text-muted);">
+                        <span>Bidirectionally bound to Low-Code builder.</span>
+                        <span id="yamlLinesCount">0 lines</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASSING LIST -->
+        <details id="passingDetails">
+            <summary>
+                <span id="passHeaderCount">Passing Assertions (0)</span>
+                <span style="font-size: 11.5px; color: var(--text-subtle);">Toggle List</span>
+            </summary>
+            <div id="passingList" class="pass-container"></div>
+        </details>
+    </section>
+</main>
+
+<!-- LOGS MODAL -->
+<div id="logsModal" class="overlay" style="display:none;" onclick="if(event.target===this)closeLogsModal();">
+    <div class="modal-box">
+        <div class="modal-header">
+            <strong style="color:var(--text-main); font-size:14px;">PBI Guard Server Logs (pbi-guard.log)</strong>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-secondary" onclick="fetchServerLogs()">Refresh</button>
+                <button class="btn btn-secondary" onclick="closeLogsModal()">Close</button>
+            </div>
+        </div>
+        <div class="modal-body" id="logsContainer">Loading logs...</div>
+    </div>
+</div>
+
+<!-- RESTART OVERLAY -->
+<div id="restartingOverlay" class="overlay" style="display:none;">
+    <div class="modal-box"
+         style="width: 440px; padding: 32px 24px; text-align: center; align-items: center; gap: 12px;">
+        <h2 style="font-size: 20px; font-weight: 700;">Restarting Service</h2>
+        <p id="restartingStatusText" style="color: var(--text-muted); font-size: 13.5px;">Releasing socket and
+            re-spawning daemon...</p>
+    </div>
+</div>
+
+<!-- STOPPED OVERLAY -->
+<div id="stoppedOverlay" class="overlay" style="display:none;">
+    <div class="modal-box"
+         style="width: 440px; padding: 32px 24px; text-align: center; align-items: center; gap: 12px;">
+        <h2 style="font-size: 20px; font-weight: 700;">Service Stopped</h2>
+        <p style="color: var(--text-muted); font-size: 13.5px;">The watcher process has terminated. You may safely close
+            this tab.</p>
+    </div>
+</div>
+
+<script>
+    // State management
+    let currentPayload = null;
+    let currentSimTab = 'tmdl';
+    let selectedTmdlFile = null;
+    let lastRenderedTimestamp = null;
+
+    // Rules Studio State
+    let parsedRulesConfig = {version: 1, assertions: []};
+    let editingRuleIndex = -1;
+    let isDraftDirty = false;
+    let yamlDebounceTimer = null;
+
+    function sanitizeName(raw) {
+        if (!raw) return "";
+        let s = String(raw).trim();
+        while (s.startsWith("[") && s.endsWith("]")) {
+            s = s.substring(1, s.length - 1).trim();
+        }
+        return s;
+    }
+
+    function checkNotificationStatus() {
+        if (!("Notification" in window)) return;
+        document.getElementById("notifBanner").style.display =
+            Notification.permission === "default" ? "flex" : "none";
+    }
+
+    function requestNotificationAccess() {
+        if (!("Notification" in window)) return;
+        Notification.requestPermission().then(() => checkNotificationStatus());
+    }
+
+    checkNotificationStatus();
+
+    // Setup Server-Sent Events
+    const evtSource = new EventSource("/events");
+
+    evtSource.onmessage = function (e) {
+        try {
+            const data = JSON.parse(e.data);
+            currentPayload = data;
+            renderDashboard(data);
+        } catch (err) {
+            console.error("Payload parse error:", err);
+        }
+    };
+
+    function renderDashboard(data) {
+        const total = data.total_assertions || (data.passed + data.failed);
+        const failed = data.failed || 0;
+        const passed = data.passed || 0;
+
+        document.getElementById("modelNameText").innerText = data.model_name || "Active Model";
+        document.getElementById("modelPathText").innerText = data.model_path || "";
+        document.getElementById("lastCheckTimeText").innerText = data.last_check || "—";
+        document.getElementById("valLatency").innerText = (data.elapsed_ms || 0) + " ms evaluation";
+        document.getElementById("valTotalMeasures").innerText = data.measures_count || 0;
+
+        const ratioEl = document.getElementById("valRatio");
+        ratioEl.innerText = `${failed} / ${total}`;
+        ratioEl.className = failed > 0 ? "metric-val fail" : "metric-val pass";
+        document.getElementById("valRatioDesc").innerText = failed > 0 ? "Breaches detected" : "All contracts verified";
+
+        // Save banner
+        const diffAlert = document.getElementById("saveDiffAlert");
+        if (data.last_change && data.last_change.has_changes) {
+            diffAlert.style.display = "flex";
+            document.getElementById("saveSummaryDesc").innerText = data.last_change.summary;
+            document.getElementById("saveSummaryTime").innerText = data.last_change.timestamp;
+
+            if (data.last_change.timestamp !== lastRenderedTimestamp) {
+                lastRenderedTimestamp = data.last_change.timestamp;
+                notifyUserOnSave(data);
+            }
+        } else {
+            diffAlert.style.display = "none";
+        }
+
+        // Render failures
+        renderFailures(data);
+
+        // Render uncertified measures
+        renderUncertified(data);
+
+        // Render passing items
+        renderPassing(data, passed);
+
+        // Populate model measures in the rule builder dropdown
+        populateModelMeasuresDropdown(data.model_measures || []);
+
+        // Only sync rules from server if user has no dirty unsaved local changes
+        if (!isDraftDirty) {
+            const serverYaml = data.active_tests_yaml || "version: 1\nassertions: []\n";
+            document.getElementById("rulesYamlInput").value = serverYaml;
+            updateYamlLineCount();
+            syncParsedConfigFromYamlString(serverYaml);
+        }
+
+        renderInspector(data);
+    }
+
+    function renderFailures(data) {
+        const failed = data.failed || 0;
+        const failuresSec = document.getElementById("failuresSection");
+        const failuresList = document.getElementById("failuresList");
+        document.getElementById("failCountBadge").innerText = failed;
+
+        if (failed > 0 && data.failed_results) {
+            failuresSec.style.display = "block";
+            failuresList.innerHTML = "";
+
+            const groups = {};
+            data.failed_results.forEach(r => {
+                const t = sanitizeName(r.target || "General");
+                if (!groups[t]) groups[t] = [];
+                groups[t].push(r);
+            });
+
+            Object.keys(groups).forEach(targetName => {
+                const breaches = groups[targetName];
+                const card = document.createElement("div");
+                card.className = "target-group-card";
+
+                let breachesHtml = "";
+                breaches.forEach(b => {
+                    const isDrift = b.category === "drift" || b.rule_type === "dax_exact";
+                    const tagClass = isDrift ? "tag-drift" : (b.category === "governance" ? "tag-governance" : "tag-policy");
+                    const tagLabel = isDrift ? "Formula Drift" : (b.category === "governance" ? "Governance Rule" : "Policy Breach");
+
+                    let detailsHtml = "";
+                    if (isDrift) {
+                        detailsHtml = `
+              <div class="diagnosis-box" style="border-left-color: #f59e0b; background: #fffbeb; color: #92400e;">
+                Formula expression diverged from certified baseline contract.
+              </div>
+              <div class="diff-grid">
+                <div class="diff-pane">
+                  <span class="diff-pane-title exp">Certified Baseline Contract</span>
+                  <div class="code-box exp">${escapeHtml(b.expected || "(empty)")}</div>
+                </div>
+                <div class="diff-pane">
+                  <span class="diff-pane-title act">Detected in Power BI</span>
+                  <div class="code-box act">${escapeHtml(b.actual || "(empty)")}</div>
+                </div>
+              </div>
+            `;
+                    } else {
+                        detailsHtml = `
+              <div class="diagnosis-box">
+                <strong>Violation:</strong> ${escapeHtml(b.reason || "Rule failed")}
+                <br/><span style="color:var(--text-muted); font-size:11.5px;">Requirement: ${escapeHtml(b.expected || "Rule compliance")}</span>
+              </div>
+              <div class="diff-pane" style="margin-top:6px;">
+                <span class="diff-pane-title act">Offending DAX Expression</span>
+                <div class="code-box act">${escapeHtml(b.actual || "(empty)")}</div>
+              </div>
+            `;
+                    }
+
+                    breachesHtml += `
+            <div class="breach-item">
+              <div class="breach-meta">
+                <span class="tag-category ${tagClass}">${tagLabel}</span>
+                <span class="rule-name">${escapeHtml(b.name || b.rule_type)}</span>
+              </div>
+              ${detailsHtml}
+            </div>
+          `;
+                });
+
+                card.innerHTML = `
+          <div class="target-header">
+            <div class="target-info">
+              <span class="target-badge">Measure</span>
+              <span class="target-name">[${escapeHtml(targetName)}]</span>
+            </div>
+            <span class="target-fail-pill">${breaches.length} ${breaches.length === 1 ? 'Breach' : 'Breaches'}</span>
+          </div>
+          ${breachesHtml}
+        `;
+                failuresList.appendChild(card);
+            });
+        } else {
+            failuresSec.style.display = "none";
+        }
+    }
+
+    function renderUncertified(data) {
+        const uncertSec = document.getElementById("uncertifiedSection");
+        const uncertList = document.getElementById("uncertifiedList");
+        if (data.uncertified_measures && data.uncertified_measures.length > 0) {
+            uncertSec.style.display = "block";
+            uncertList.innerHTML = "";
+            data.uncertified_measures.forEach(m => {
+                const name = sanitizeName(m.name);
+                const row = document.createElement("div");
+                row.style.cssText = "background:var(--card-bg); border:1px solid var(--warning-border); border-left:4px solid var(--warning); border-radius:12px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(0,0,0,0.02);";
+                row.innerHTML = `
+          <span style="font-weight:600; font-size:14px; color:var(--text-main);">[${escapeHtml(name)}]</span>
+          <button class="btn btn-secondary" onclick="freezeBaseline()">Add to Baseline</button>
+        `;
+                uncertList.appendChild(row);
+            });
+        } else {
+            uncertSec.style.display = "none";
+        }
+    }
+
+    function renderPassing(data, passed) {
+        document.getElementById("passHeaderCount").innerText = `Passing Assertions (${passed})`;
+        const passList = document.getElementById("passingList");
+        passList.innerHTML = "";
+        if (data.passed_results) {
+            data.passed_results.forEach(r => {
+                const t = sanitizeName(r.target || "");
+                const item = document.createElement("div");
+                item.className = "pass-item";
+                item.innerHTML = `
+          <span>[${escapeHtml(t)}] <span style="color:var(--text-muted); font-size:11.5px;">— ${escapeHtml(r.name || r.rule_type)}</span></span>
+          <span style="color:var(--success); font-weight:700;">PASS</span>
+        `;
+                passList.appendChild(item);
+            });
+        }
+    }
+
+    function switchSimTab(tab) {
+        currentSimTab = tab;
+        document.getElementById("tabBtnTmdl").className = tab === 'tmdl' ? 'sim-tab active' : 'sim-tab';
+        document.getElementById("tabBtnYaml").className = tab === 'yaml' ? 'sim-tab active' : 'sim-tab';
+        document.getElementById("tabBtnRules").className = tab === 'rules' ? 'sim-tab active' : 'sim-tab';
+
+        const codeView = document.getElementById("inspectorCodeView");
+        const studioPanel = document.getElementById("rulesStudioPanel");
+        const fileSelect = document.getElementById("tmdlFileSelect");
+
+        if (tab === 'rules') {
+            codeView.style.display = "none";
+            studioPanel.style.display = "flex";
+            fileSelect.style.display = "none";
+        } else {
+            codeView.style.display = "grid";
+            studioPanel.style.display = "none";
+            fileSelect.style.display = tab === 'tmdl' ? 'inline-block' : 'none';
+            if (currentPayload) renderInspector(currentPayload);
+        }
+    }
+
+    function onTmdlFileSelect(filename) {
+        selectedTmdlFile = filename;
+        if (currentPayload) renderInspector(currentPayload);
+    }
+
+    function renderInspector(data) {
+        const editorView = document.getElementById("editorView");
+        const fileSelect = document.getElementById("tmdlFileSelect");
+
+        if (data.tmdl_files && Object.keys(data.tmdl_files).length > 0) {
+            if (!selectedTmdlFile || !data.tmdl_files[selectedTmdlFile]) {
+                selectedTmdlFile = data.active_tmdl_file || Object.keys(data.tmdl_files)[0];
+            }
+
+            let optsHtml = "";
+            Object.keys(data.tmdl_files).forEach(f => {
+                const isSelected = f === selectedTmdlFile ? "selected" : "";
+                optsHtml += `<option value="${escapeHtml(f)}" ${isSelected}>${escapeHtml(f)}</option>`;
+            });
+            fileSelect.innerHTML = optsHtml;
+        }
+
+        let rawText = "";
+        if (currentSimTab === 'tmdl') {
+            rawText = (data.tmdl_files && data.tmdl_files[selectedTmdlFile])
+                || data.active_tmdl_snippet
+                || "// No TMDL content loaded.";
+        } else {
+            rawText = data.active_lock_yaml || "# No lockfile available.";
+        }
+
+        const lines = rawText.split("\n").slice(0, 100);
+        let html = "";
+        lines.forEach((line, idx) => {
+            let text = escapeHtml(line);
+            text = text.replace(/\b(table|measure|column|partition)\b/g, '<span class="kwd">$1</span>');
+            text = text.replace(/\b(true|false)\b/g, '<span class="val">$1</span>');
+            text = text.replace(/(\/\/.*|#.*)/g, '<span class="cmt">$1</span>');
+            html += `<div class="code-gutter-line"><span class="line-no">${idx + 1}</span><span class="line-text">${text}</span></div>`;
+        });
+        editorView.innerHTML = html;
+
+        const termLogs = document.getElementById("terminalLogs");
+        const termBadge = document.getElementById("termStatusBadge");
+        const termSummary = document.getElementById("termSummaryText");
+
+        if (data.failed > 0) {
+            termBadge.className = "term-status-badge status-blocked";
+            termBadge.innerText = "PR BLOCKED (BREACH)";
+            termSummary.innerText = `${data.failed} breach(es) detected.`;
+
+            let logContent = `
+        <div class="log-line"><span class="log-dim">$</span><span>pbi-guard check</span></div>
+        <div class="log-line"><span class="log-err">FAIL</span><span>${data.failed} assertions breached contract baseline.</span></div>
+      `;
+            data.failed_results.slice(0, 3).forEach(f => {
+                logContent += `
+          <div class="log-line">
+            <span class="log-dim">&gt;</span>
+            <span style="color:#e2e8f0;">[${escapeHtml(sanitizeName(f.target))}]: ${escapeHtml(f.reason || 'Diverged')}</span>
+          </div>
+        `;
+            });
+            termLogs.innerHTML = logContent;
+        } else {
+            termBadge.className = "term-status-badge status-passed";
+            termBadge.innerText = "100% VERIFIED";
+            termSummary.innerText = "All contracts intact.";
+            termLogs.innerHTML = `
+        <div class="log-line"><span class="log-dim">$</span><span>pbi-guard check</span></div>
+        <div class="log-line"><span class="log-ok">PASS</span><span>Verified ${data.passed || 0} assertions with 0 errors.</span></div>
+      `;
+        }
+    }
+
+    // ==========================================================================
+    // LOW-CODE & SPLIT YAML STUDIO IMPLEMENTATION
+    // ==========================================================================
+
+    function setStudioViewMode(mode) {
+        document.getElementById("btnModeSplit").className = mode === 'split' ? 'view-mode-btn active' : 'view-mode-btn';
+        document.getElementById("btnModeLowCode").className = mode === 'lowcode' ? 'view-mode-btn active' : 'view-mode-btn';
+        document.getElementById("btnModeYaml").className = mode === 'yaml' ? 'view-mode-btn active' : 'view-mode-btn';
+
+        const container = document.getElementById("studioSplitContainer");
+        container.className = `studio-split-container view-${mode}`;
+    }
+
+    function setDraftDirty(dirty) {
+        isDraftDirty = dirty;
+        const badge = document.getElementById("draftStatusBadge");
+        const txt = document.getElementById("draftStatusText");
+        if (dirty) {
+            badge.className = "dirty-indicator dirty";
+            txt.innerText = "Draft: Unsaved changes";
+        } else {
+            badge.className = "dirty-indicator clean";
+            txt.innerText = "In Sync with Workspace";
+        }
+    }
+
+    function populateModelMeasuresDropdown(measures) {
+        const select = document.getElementById("builderTargetMeasureSelect");
+        const prev = select.value;
+        if (!measures || measures.length === 0) {
+            select.innerHTML = "<option value=''>No measures found in model</option>";
+            return;
+        }
+        let html = "";
+        measures.forEach(m => {
+            html += `<option value="${escapeHtml(m)}">[${escapeHtml(m)}]</option>`;
+        });
+        select.innerHTML = html;
+        if (prev) select.value = prev;
+    }
+
+    function onTargetModeChanged() {
+        const mode = document.getElementById("builderTargetMode").value;
+        const rowPattern = document.getElementById("rowTargetPattern");
+        const rowSpecific = document.getElementById("rowTargetSpecific");
+
+        if (mode === "pattern") {
+            rowPattern.style.display = "flex";
+            rowSpecific.style.display = "none";
+        } else if (mode === "specific") {
+            rowPattern.style.display = "none";
+            rowSpecific.style.display = "flex";
+        } else {
+            rowPattern.style.display = "none";
+            rowSpecific.style.display = "none";
+        }
+    }
+
+    function onRuleTypeChanged() {
+        const t = document.getElementById("builderRuleType").value;
+        document.getElementById("sectionDaxRuleConfig").style.display = t === "dax_rule" ? "flex" : "none";
+        document.getElementById("sectionFormatConfig").style.display = t === "measure_format" ? "flex" : "none";
+        document.getElementById("sectionNamingConfig").style.display = t === "measure_naming" ? "grid" : "none";
+    }
+
+    function toggleAllowedLiteralsRow() {
+        const checked = document.getElementById("builderForbidMagic").checked;
+        document.getElementById("rowAllowedLiterals").style.display = checked ? "flex" : "none";
+    }
+
+    // Bidirectional sync: Parse YAML string into memory and render cards
+    function syncParsedConfigFromYamlString(yamlText) {
+        if (window.jsyaml) {
+            try {
+                const parsed = jsyaml.load(yamlText) || {version: 1, assertions: []};
+                parsedRulesConfig = parsed;
+                if (!Array.isArray(parsedRulesConfig.assertions)) parsedRulesConfig.assertions = [];
+                renderActiveRuleCards();
+                document.getElementById("yamlSyntaxStatus").innerText = "✓ Valid YAML";
+                document.getElementById("yamlSyntaxStatus").style.color = "var(--success)";
+            } catch (err) {
+                document.getElementById("yamlSyntaxStatus").innerText = "⚠ Syntax Error: " + err.message.split("\n")[0];
+                document.getElementById("yamlSyntaxStatus").style.color = "var(--danger)";
+            }
+        } else {
+            // Server-assisted fallback parser for environments without CDN
+            fetch("/api/rules/parse", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({yaml: yamlText})
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === "ok") {
+                        parsedRulesConfig = res.data;
+                        renderActiveRuleCards();
+                        document.getElementById("yamlSyntaxStatus").innerText = "✓ Valid YAML";
+                        document.getElementById("yamlSyntaxStatus").style.color = "var(--success)";
+                    } else {
+                        document.getElementById("yamlSyntaxStatus").innerText = "⚠ " + res.message;
+                        document.getElementById("yamlSyntaxStatus").style.color = "var(--danger)";
+                    }
+                })
+                .catch(() => {
+                });
+        }
+    }
+
+    // Bidirectional sync: Serialize in-memory assertion list to YAML text
+    function syncYamlTextFromConfig(thenSave = false) {
+        if (window.jsyaml) {
+            const outYaml = jsyaml.dump(parsedRulesConfig, {indent: 2, lineWidth: -1, noRefs: true});
+            document.getElementById("rulesYamlInput").value = outYaml;
+            updateYamlLineCount();
+            setDraftDirty(true);
+            renderActiveRuleCards();
+            if (thenSave) saveGovernanceRules();
+        } else {
+            fetch("/api/rules/format", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({data: parsedRulesConfig})
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === "ok") {
+                        document.getElementById("rulesYamlInput").value = res.yaml;
+                        updateYamlLineCount();
+                        setDraftDirty(true);
+                        renderActiveRuleCards();
+                        if (thenSave) saveGovernanceRules();
+                    }
+                });
+        }
+    }
+
+    function onYamlRawInput() {
+        setDraftDirty(true);
+        updateYamlLineCount();
+        clearTimeout(yamlDebounceTimer);
+        yamlDebounceTimer = setTimeout(() => {
+            syncParsedConfigFromYamlString(document.getElementById("rulesYamlInput").value);
+        }, 300);
+    }
+
+    function updateYamlLineCount() {
+        const text = document.getElementById("rulesYamlInput").value || "";
+        const lines = text.split("\n").length;
+        document.getElementById("yamlLinesCount").innerText = `${lines} line${lines === 1 ? '' : 's'}`;
+    }
+
+    // Render active rule cards in visual builder
+    function renderActiveRuleCards() {
+        const container = document.getElementById("activeRulesList");
+        const assertions = parsedRulesConfig.assertions || [];
+        document.getElementById("visualRulesCount").innerText = assertions.length;
+        container.innerHTML = "";
+
+        if (assertions.length === 0) {
+            container.innerHTML = `
+        <div style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 24px; text-align: center; color: var(--text-muted); font-size: 12.5px;">
+          No rules configured in this contract yet.<br/>Use a quick preset above or build a rule.
+        </div>
+      `;
+            return;
+        }
+
+        assertions.forEach((rule, idx) => {
+            const card = document.createElement("div");
+            card.className = "rule-item-card";
+
+            let targetChip = "";
+            if (rule.measure) {
+                targetChip = `<span class="pill-chip pill-target">[${escapeHtml(sanitizeName(rule.measure))}]</span>`;
+            } else if (rule.measures_matching) {
+                const list = Array.isArray(rule.measures_matching) ? rule.measures_matching.join(", ") : rule.measures_matching;
+                targetChip = `<span class="pill-chip pill-target">${escapeHtml(list)}</span>`;
+            } else {
+                targetChip = `<span class="pill-chip pill-target">Scope: Global</span>`;
+            }
+
+            let conditionChips = "";
+            if (rule.must_call) {
+                conditionChips += `<span class="pill-chip pill-call">Calls ${escapeHtml(rule.must_call)}()</span>`;
+            }
+            if (rule.forbid_calls) {
+                const f = Array.isArray(rule.forbid_calls) ? rule.forbid_calls.join(", ") : rule.forbid_calls;
+                conditionChips += `<span class="pill-chip" style="background:#fff1f2; color:#b91c1c; border:1px solid #fecdd3;">Forbids ${escapeHtml(f)}</span>`;
+            }
+            if (rule.forbid_raw_numeric_literals) {
+                conditionChips += `<span class="pill-chip" style="background:#fffbeb; color:#92400e; border:1px solid #fde68a;">No Magic Numbers</span>`;
+            }
+            if (rule.required_format) {
+                conditionChips += `<span class="pill-chip pill-call">Fmt: ${escapeHtml(rule.required_format)}</span>`;
+            }
+
+            card.innerHTML = `
+        <div class="rule-item-content">
+          <div class="rule-item-title">${escapeHtml(rule.name || "Untitled Assertion")}</div>
+          <div class="rule-item-meta">
+            <span class="pill-chip" style="background:#f1f5f9; color:#0f172a; font-weight:700;">${escapeHtml(rule.type || 'dax_rule')}</span>
+            ${targetChip}
+            ${conditionChips}
+          </div>
+        </div>
+        <div class="rule-card-actions">
+          <button class="action-icon-btn" title="Edit Rule" onclick="loadRuleIntoForm(${idx})">✏️</button>
+          <button class="action-icon-btn" title="Duplicate Rule" onclick="duplicateRule(${idx})">📋</button>
+          <button class="action-icon-btn danger" title="Delete Rule" onclick="deleteRule(${idx})">🗑️</button>
+        </div>
+      `;
+            container.appendChild(card);
+        });
+    }
+
+    // Build Rule Object from Form
+    function commitBuilderRule() {
+        const name = document.getElementById("builderRuleName").value.trim() || "DAX Quality Contract";
+        const type = document.getElementById("builderRuleType").value;
+        const targetMode = document.getElementById("builderTargetMode").value;
+
+        const rule = {
+            name: name,
+            type: type,
+        };
+
+        if (targetMode === "pattern") {
+            const raw = document.getElementById("builderTargetPattern").value.trim();
+            rule.measures_matching = raw.split(",").map(s => s.trim()).filter(Boolean);
+            if (rule.measures_matching.length === 0) rule.measures_matching = ["*"];
+        } else if (targetMode === "specific") {
+            const chosen = document.getElementById("builderTargetMeasureSelect").value;
+            rule.measure = chosen ? `[${sanitizeName(chosen)}]` : "*";
+        } else {
+            rule.measures_matching = ["*"];
+        }
+
+        if (type === "dax_rule") {
+            const mustCall = document.getElementById("builderMustCall").value.trim();
+            if (mustCall) rule.must_call = mustCall;
+
+            const forbidCalls = document.getElementById("builderForbidCalls").value.trim();
+            if (forbidCalls) {
+                rule.forbid_calls = forbidCalls.split(",").map(s => s.trim()).filter(Boolean);
+            }
+
+            if (document.getElementById("builderForbidMagic").checked) {
+                rule.forbid_raw_numeric_literals = true;
+                const rawLits = document.getElementById("builderAllowedLiterals").value.trim();
+                rule.allowed_literals = rawLits.split(",").map(s => Number(s.trim())).filter(n => !isNaN(n));
+            }
+        } else if (type === "measure_format") {
+            const fmt = document.getElementById("builderRequiredFormat").value.trim();
+            if (fmt) rule.required_format = fmt;
+        } else if (type === "measure_naming") {
+            const p = document.getElementById("builderPrefix").value.trim();
+            const s = document.getElementById("builderSuffix").value.trim();
+            if (p) rule.prefix = p;
+            if (s) rule.suffix = s;
+        }
+
+        if (editingRuleIndex >= 0 && editingRuleIndex < parsedRulesConfig.assertions.length) {
+            parsedRulesConfig.assertions[editingRuleIndex] = rule;
+            cancelRuleEdit();
+        } else {
+            parsedRulesConfig.assertions.push(rule);
+            resetRuleForm();
+        }
+
+        syncYamlTextFromConfig(false);
+    }
+
+    function loadRuleIntoForm(idx) {
+        const rule = parsedRulesConfig.assertions[idx];
+        if (!rule) return;
+
+        editingRuleIndex = idx;
+        document.getElementById("formCardHeading").innerText = `Edit Rule #${idx + 1}`;
+        document.getElementById("editingRuleIndexBadge").style.display = "inline-block";
+        document.getElementById("editingRuleIndexBadge").innerText = `EDITING #${idx + 1}`;
+        document.getElementById("btnAddRule").innerText = "Update Rule";
+        document.getElementById("btnCancelEdit").style.display = "inline-block";
+
+        document.getElementById("builderRuleName").value = rule.name || "";
+        document.getElementById("builderRuleType").value = rule.type || "dax_rule";
+        onRuleTypeChanged();
+
+        if (rule.measure) {
+            document.getElementById("builderTargetMode").value = "specific";
+            onTargetModeChanged();
+            document.getElementById("builderTargetMeasureSelect").value = sanitizeName(rule.measure);
+        } else if (rule.measures_matching) {
+            document.getElementById("builderTargetMode").value = "pattern";
+            onTargetModeChanged();
+            const arr = Array.isArray(rule.measures_matching) ? rule.measures_matching.join(", ") : rule.measures_matching;
+            document.getElementById("builderTargetPattern").value = arr;
+        }
+
+        if (rule.type === "dax_rule") {
+            document.getElementById("builderMustCall").value = rule.must_call || "";
+            document.getElementById("builderForbidCalls").value = Array.isArray(rule.forbid_calls) ? rule.forbid_calls.join(", ") : (rule.forbid_calls || "");
+            document.getElementById("builderForbidMagic").checked = Boolean(rule.forbid_raw_numeric_literals);
+            toggleAllowedLiteralsRow();
+            document.getElementById("builderAllowedLiterals").value = Array.isArray(rule.allowed_literals) ? rule.allowed_literals.join(", ") : "";
+        } else if (rule.type === "measure_format") {
+            document.getElementById("builderRequiredFormat").value = rule.required_format || "";
+        } else if (rule.type === "measure_naming") {
+            document.getElementById("builderPrefix").value = rule.prefix || "";
+            document.getElementById("builderSuffix").value = rule.suffix || "";
+        }
+
+        // Scroll to form if in lowcode or split view
+        document.querySelector(".lowcode-studio-col").scrollTop = 0;
+    }
+
+    function cancelRuleEdit() {
+        editingRuleIndex = -1;
+        document.getElementById("formCardHeading").innerText = "Create New Governance Rule";
+        document.getElementById("editingRuleIndexBadge").style.display = "none";
+        document.getElementById("btnAddRule").innerText = "+ Add Rule to Suite";
+        document.getElementById("btnCancelEdit").style.display = "none";
+        resetRuleForm();
+    }
+
+    function resetRuleForm() {
+        document.getElementById("builderRuleName").value = "";
+        document.getElementById("builderTargetPattern").value = "*Margin*, *Ratio*";
+        document.getElementById("builderMustCall").value = "";
+        document.getElementById("builderForbidCalls").value = "";
+        document.getElementById("builderForbidMagic").checked = false;
+        document.getElementById("builderAllowedLiterals").value = "0, 1";
+        document.getElementById("builderRequiredFormat").value = "";
+        document.getElementById("builderPrefix").value = "";
+        document.getElementById("builderSuffix").value = "";
+        toggleAllowedLiteralsRow();
+    }
+
+    function deleteRule(idx) {
+        if (!confirm(`Delete rule "${parsedRulesConfig.assertions[idx]?.name || 'Untitled'}"?`)) return;
+        parsedRulesConfig.assertions.splice(idx, 1);
+        if (editingRuleIndex === idx) cancelRuleEdit();
+        syncYamlTextFromConfig(false);
+    }
+
+    function duplicateRule(idx) {
+        const copy = JSON.parse(JSON.stringify(parsedRulesConfig.assertions[idx]));
+        copy.name = (copy.name || "Rule") + " (Copy)";
+        parsedRulesConfig.assertions.splice(idx + 1, 0, copy);
+        syncYamlTextFromConfig(false);
+    }
+
+    function applyPresetRecipe(recipe) {
+        let rule = null;
+        if (recipe === 'safe_divide') {
+            rule = {
+                name: "DAX: Safe division required for ratio & margin metrics",
+                type: "dax_rule",
+                measures_matching: ["*Margin*", "*Ratio*", "*%*"],
+                must_call: "DIVIDE"
+            };
+        } else if (recipe === 'forbid_magic') {
+            rule = {
+                name: "Integrity: No hardcoded numeric multipliers in KPIs",
+                type: "dax_rule",
+                measures_matching: ["*Sales*", "*Profit*", "*COGS*"],
+                forbid_raw_numeric_literals: true,
+                allowed_literals: [0, 1]
+            };
+        } else if (recipe === 'currency_format') {
+            rule = {
+                name: "Formatting: All monetary metrics must follow currency layout",
+                type: "measure_format",
+                measures_matching: ["*Revenue*", "*Sales*", "*Cost*", "*Profit*"],
+                required_format: "$#,##0;($#,##0);-"
+            };
+        } else if (recipe === 'naming_prefix') {
+            rule = {
+                name: "Governance: Presentation KPIs must have standardized suffix",
+                type: "measure_naming",
+                measures_matching: ["*YoY*"],
+                suffix: "_YoY"
+            };
+        } else if (recipe === 'no_calculate') {
+            rule = {
+                name: "Performance: Forbid unnecessary CALCULATE in base sums",
+                type: "dax_rule",
+                measures_matching: ["*Base*", "*Raw*"],
+                forbid_calls: ["CALCULATE"]
+            };
+        }
+
+        if (rule) {
+            parsedRulesConfig.assertions.push(rule);
+            syncYamlTextFromConfig(false);
+        }
+    }
+
+    function discardDraftChanges() {
+        if (!confirm("Discard all local edits and reload from active workspace?")) return;
+        setDraftDirty(false);
+        cancelRuleEdit();
+        if (currentPayload) {
+            const serverYaml = currentPayload.active_tests_yaml || "version: 1\nassertions: []\n";
+            document.getElementById("rulesYamlInput").value = serverYaml;
+            syncParsedConfigFromYamlString(serverYaml);
+        }
+    }
+
+    function saveGovernanceRules() {
+        const yamlContent = document.getElementById("rulesYamlInput").value;
+        const statusTxt = document.getElementById("draftStatusText");
+        statusTxt.innerText = "Saving & verifying...";
+
+        fetch("/api/rules/save", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({yaml: yamlContent})
+        })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === "ok") {
+                    setDraftDirty(false);
+                    statusTxt.innerText = "Saved & Verified!";
+                    setTimeout(() => {
+                        if (!isDraftDirty) statusTxt.innerText = "In Sync with Workspace";
+                    }, 2500);
+                } else {
+                    alert("Failed to save rules: " + res.message);
+                    setDraftDirty(true);
+                }
+            })
+            .catch(err => {
+                alert("Network error saving rules: " + err);
+                setDraftDirty(true);
+            });
+    }
+
+    // Global keyboard shortcut: Ctrl+S or Cmd+S to save rules
+    window.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+            if (currentSimTab === "rules") {
+                e.preventDefault();
+                saveGovernanceRules();
+            }
+        }
+    });
+
+    // Notifications & Service Handlers
+    function notifyUserOnSave(data) {
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        const failed = data.failed || 0;
+        const total = data.total_assertions || (data.passed + data.failed);
+        const title = failed > 0 ? `PBI Guard: ${failed}/${total} Breaches` : `PBI Guard: All Passed`;
+
+        const notification = new Notification(title, {
+            body: data.last_change.summary,
+            tag: "pbi-guard-save",
+            renotify: true,
+        });
+
+        notification.onclick = function () {
+            window.focus();
+            if (failed > 0) {
+                const sec = document.getElementById("failuresSection");
+                if (sec) sec.scrollIntoView({behavior: "smooth"});
+            }
+            this.close();
+        };
+    }
+
+    function viewLogsModal() {
+        document.getElementById("logsModal").style.display = "flex";
+        fetchServerLogs();
+    }
+
+    function closeLogsModal() {
+        document.getElementById("logsModal").style.display = "none";
+    }
+
+    function fetchServerLogs() {
+        const container = document.getElementById("logsContainer");
+        fetch("/api/logs")
+            .then(r => r.json())
+            .then(data => {
+                container.innerText = data.logs.join("\n") || "No logs recorded yet.";
+                container.scrollTop = container.scrollHeight;
+            })
+            .catch(err => {
+                container.innerText = "Failed to load logs: " + err;
+            });
+    }
+
+    function freezeBaseline() {
+        fetch("/api/freeze", {method: "POST"});
+    }
+
+    function reVerify() {
+        fetch("/api/verify", {method: "POST"});
+    }
+
+    function stopService() {
+        if (!confirm("Stop the PBI Guard service? The watcher will be terminated.")) return;
+        fetch("/api/stop", {method: "POST"}).finally(() => {
+            document.getElementById("stoppedOverlay").style.display = "flex";
+        });
+    }
+
+    function refreshService() {
+        document.getElementById("restartingOverlay").style.display = "flex";
+        const statusText = document.getElementById("restartingStatusText");
+        if (evtSource) evtSource.close();
+
+        fetch("/api/restart", {method: "POST"})
+            .catch(() => {
+            })
+            .finally(() => {
+                let attempt = 0;
+                const maxAttempts = 25;
+                const pollTimer = setInterval(() => {
+                    attempt++;
+                    statusText.innerText = `Reconnecting to restarted daemon (Attempt ${attempt}/${maxAttempts})...`;
+
+                    fetch("/", {method: "GET", cache: "no-store"})
+                        .then(res => {
+                            if (res.ok) {
+                                clearInterval(pollTimer);
+                                window.location.reload();
+                            }
+                        })
+                        .catch(() => {
+                            if (attempt >= maxAttempts) {
+                                clearInterval(pollTimer);
+                                statusText.innerText = "Restart timed out. Check Logs modal or pbi-guard.log for details.";
+                            }
+                        });
+                }, 400);
+            });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+</script>
+</body>
+</html>
