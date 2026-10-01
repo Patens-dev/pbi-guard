@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap"
           rel="stylesheet">
-    <!-- Optional CDN YAML Parser with clean backend fallback -->
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <style>
         :root {
@@ -674,9 +673,7 @@
             font-weight: 600;
         }
 
-        /* ==========================================================================
-           SPLIT STUDIO: LOW-CODE BUILDER & RAW YAML
-           ========================================================================== */
+        /* SPLIT STUDIO */
         .rules-studio-panel {
             display: flex;
             flex-direction: column;
@@ -1096,6 +1093,20 @@
             white-space: pre-wrap;
             word-break: break-all;
         }
+
+        .suggest-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            font-family: var(--font-error);
+            font-size: 12px;
+            color: var(--text-main);
+        }
     </style>
 </head>
 <body>
@@ -1117,6 +1128,7 @@
         </div>
 
         <div class="nav-actions">
+            <button class="btn btn-secondary" onclick="openModelPickerModal()">Change Model</button>
             <button class="btn btn-secondary" onclick="viewLogsModal()">Logs</button>
             <button class="btn btn-secondary" onclick="freezeBaseline()">Freeze Baseline</button>
             <button class="btn btn-secondary" onclick="reVerify()">Re-Verify</button>
@@ -1139,12 +1151,17 @@
             <span class="metric-val" id="valRatio">0 / 0</span>
             <span class="metric-desc" id="valRatioDesc">Failing / Total Assertions</span>
         </div>
-        <div class="metric-card">
-            <span class="metric-label">Model Target</span>
-            <span class="metric-val" id="modelNameText" style="font-size:18px;">—</span>
-            <span class="metric-desc" id="modelPathText"
-                  style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Detecting workspace...</span>
+
+        <!-- MODEL TARGET CARD (WITH INSTANT PATH SWITCHER) -->
+        <div class="metric-card" style="cursor: pointer;" onclick="openModelPickerModal()" title="Click to manually set or switch Power BI model path">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span class="metric-label">Model Target</span>
+                <span style="font-size: 10px; font-weight: 700; color: var(--primary); text-transform: uppercase;">Change ✎</span>
+            </div>
+            <span class="metric-val" id="modelNameText" style="font-size:18px;">Scanning...</span>
+            <span class="metric-desc" id="modelPathText" style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Detecting workspace...</span>
         </div>
+
         <div class="metric-card">
             <span class="metric-label">Total Measures</span>
             <span class="metric-val" id="valTotalMeasures">—</span>
@@ -1258,15 +1275,13 @@
                 <button class="recipe-chip" onclick="applyPresetRecipe('forbid_magic')">🚫 Ban Magic Numbers</button>
                 <button class="recipe-chip" onclick="applyPresetRecipe('currency_format')">💲 Currency Format</button>
                 <button class="recipe-chip" onclick="applyPresetRecipe('naming_prefix')">🏷️ Naming Convention</button>
-                <button class="recipe-chip" onclick="applyPresetRecipe('no_calculate')">⚡ Ban CALCULATE in Measures
-                </button>
+                <button class="recipe-chip" onclick="applyPresetRecipe('no_calculate')">⚡ Ban CALCULATE in Measures</button>
             </div>
 
             <!-- Split Work Area -->
             <div class="studio-split-container" id="studioSplitContainer">
                 <!-- LEFT: Low-Code Studio -->
                 <div class="lowcode-studio-col">
-                    <!-- Rule Creator / Editor Card -->
                     <div class="rule-form-card">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span id="formCardHeading"
@@ -1287,8 +1302,7 @@
                                     <option value="dax_rule">DAX AST Policy (dax_rule)</option>
                                     <option value="measure_format">Measure Format (measure_format)</option>
                                     <option value="measure_naming">Naming Convention (measure_naming)</option>
-                                    <option value="column_usage_rule">Column Usage Architecture (column_usage_rule)
-                                    </option>
+                                    <option value="column_usage_rule">Column Usage Architecture (column_usage_rule)</option>
                                 </select>
                             </div>
 
@@ -1416,6 +1430,34 @@
     </section>
 </main>
 
+<!-- MODEL TARGET MODAL (MANUAL INPUT + SUGGESTIONS) -->
+<div id="modelModal" class="overlay" style="display:none;" onclick="if(event.target===this)closeModelPickerModal();">
+    <div class="modal-box" style="width: 650px;">
+        <div class="modal-header">
+            <strong style="color:var(--text-main); font-size:14px;">Bind Power BI Model (.pbip)</strong>
+            <button class="btn btn-secondary btn-sm" onclick="closeModelPickerModal()">✕</button>
+        </div>
+        <div style="padding: 20px; background: #ffffff; display: flex; flex-direction: column; gap: 14px;">
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+                Enter the path to your <code>.pbip</code> file or the <code>definition/</code> folder. PBI Guard will remember this path and verify on every save.
+            </p>
+
+            <div class="form-row">
+                <label class="form-label">Model File or Folder Path</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="inputManualPath" class="form-input mono" style="flex:1;" placeholder="e.g. D:\dev\powerbitests\test1" />
+                    <button class="btn btn-primary" onclick="submitManualPath()">Bind Model</button>
+                </div>
+            </div>
+
+            <div id="suggestedModelsContainer" style="margin-top: 10px;">
+                <label class="form-label" style="margin-bottom: 6px; display: block;">Discovered Models on Local Machine</label>
+                <div id="suggestedModelsList" style="max-height: 180px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- LOGS MODAL -->
 <div id="logsModal" class="overlay" style="display:none;" onclick="if(event.target===this)closeLogsModal();">
     <div class="modal-box">
@@ -1451,13 +1493,11 @@
 </div>
 
 <script>
-    // State management
     let currentPayload = null;
     let currentSimTab = 'tmdl';
     let selectedTmdlFile = null;
     let lastRenderedTimestamp = null;
 
-    // Rules Studio State
     let parsedRulesConfig = {version: 1, assertions: []};
     let editingRuleIndex = -1;
     let isDraftDirty = false;
@@ -1485,7 +1525,6 @@
 
     checkNotificationStatus();
 
-    // Setup Server-Sent Events
     const evtSource = new EventSource("/events");
 
     evtSource.onmessage = function (e) {
@@ -1504,7 +1543,7 @@
         const passed = data.passed || 0;
 
         document.getElementById("modelNameText").innerText = data.model_name || "Active Model";
-        document.getElementById("modelPathText").innerText = data.model_path || "";
+        document.getElementById("modelPathText").innerText = data.model_path || (data.model_name === "Scanning..." ? "Click to set model folder..." : "");
         document.getElementById("lastCheckTimeText").innerText = data.last_check || "—";
         document.getElementById("valLatency").innerText = (data.elapsed_ms || 0) + " ms evaluation";
         document.getElementById("valTotalMeasures").innerText = data.measures_count || 0;
@@ -1514,7 +1553,6 @@
         ratioEl.className = failed > 0 ? "metric-val fail" : "metric-val pass";
         document.getElementById("valRatioDesc").innerText = failed > 0 ? "Breaches detected" : "All contracts verified";
 
-        // Save banner
         const diffAlert = document.getElementById("saveDiffAlert");
         if (data.last_change && data.last_change.has_changes) {
             diffAlert.style.display = "flex";
@@ -1529,19 +1567,12 @@
             diffAlert.style.display = "none";
         }
 
-        // Render failures
         renderFailures(data);
-
-        // Render uncertified measures
         renderUncertified(data);
-
-        // Render passing items
         renderPassing(data, passed);
-
-        // Populate model measures in the rule builder dropdown
         populateModelMeasuresDropdown(data.model_measures || []);
+        renderSuggestedModels(data.suggested_models || []);
 
-        // Only sync rules from server if user has no dirty unsaved local changes
         if (!isDraftDirty) {
             const serverYaml = data.active_tests_yaml || "version: 1\nassertions: []\n";
             document.getElementById("rulesYamlInput").value = serverYaml;
@@ -1550,6 +1581,87 @@
         }
 
         renderInspector(data);
+    }
+
+    function openModelPickerModal() {
+        document.getElementById("modelModal").style.display = "flex";
+        if (currentPayload && currentPayload.model_path) {
+            document.getElementById("inputManualPath").value = currentPayload.model_path;
+        }
+        fetchSuggestedModels();
+    }
+
+    function closeModelPickerModal() {
+        document.getElementById("modelModal").style.display = "none";
+    }
+
+    function fetchSuggestedModels() {
+        fetch("/api/suggest-models")
+            .then(r => r.json())
+            .then(data => {
+                if (data.models) renderSuggestedModels(data.models);
+            })
+            .catch(() => {});
+    }
+
+    function renderSuggestedModels(models) {
+        const list = document.getElementById("suggestedModelsList");
+        if (!list) return;
+        list.innerHTML = "";
+
+        if (!models || models.length === 0) {
+            list.innerHTML = `<span style="font-size:12px; color:var(--text-subtle);">No nearby .pbip files discovered automatically. Paste the folder path above.</span>`;
+            return;
+        }
+
+        models.forEach(pathStr => {
+            const item = document.createElement("div");
+            item.className = "suggest-item";
+            item.innerHTML = `
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:440px;" title="${escapeHtml(pathStr)}">${escapeHtml(pathStr)}</span>
+                <button class="btn btn-secondary btn-sm" onclick="bindModelPath('${escapeHtml(pathStr.replace(/\\/g, '\\\\'))}')">Bind</button>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function bindModelPath(pathStr) {
+        document.getElementById("inputManualPath").value = pathStr;
+        submitManualPath();
+    }
+
+    function submitManualPath() {
+        const p = document.getElementById("inputManualPath").value.trim();
+        if (!p) {
+            alert("Please enter a valid directory path.");
+            return;
+        }
+
+        fetch("/api/set-model", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({path: p})
+        })
+        .then(async response => {
+            const isJson = response.headers.get("content-type")?.includes("application/json");
+            const data = isJson ? await response.json() : null;
+
+            if (!response.ok) {
+                const errorMsg = data?.message || `Server returned ${response.status} ${response.statusText}`;
+                throw new Error(errorMsg);
+            }
+            return data;
+        })
+        .then(res => {
+            if (res && res.status === "ok") {
+                closeModelPickerModal();
+            } else {
+                alert("Error binding model: " + (res?.message || "Invalid path"));
+            }
+        })
+        .catch(err => {
+            alert("Failed to bind model: " + err.message);
+        });
     }
 
     function renderFailures(data) {
@@ -1725,7 +1837,7 @@
         if (currentSimTab === 'tmdl') {
             rawText = (data.tmdl_files && data.tmdl_files[selectedTmdlFile])
                 || data.active_tmdl_snippet
-                || "// No TMDL content loaded.";
+                || "// No TMDL content loaded. Check model binding path.";
         } else {
             rawText = data.active_lock_yaml || "# No lockfile available.";
         }
@@ -1773,10 +1885,6 @@
       `;
         }
     }
-
-    // ==========================================================================
-    // LOW-CODE & SPLIT YAML STUDIO IMPLEMENTATION
-    // ==========================================================================
 
     function setStudioViewMode(mode) {
         document.getElementById("btnModeSplit").className = mode === 'split' ? 'view-mode-btn active' : 'view-mode-btn';
@@ -1844,7 +1952,6 @@
         document.getElementById("rowAllowedLiterals").style.display = checked ? "flex" : "none";
     }
 
-    // Bidirectional sync: Parse YAML string into memory and render cards
     function syncParsedConfigFromYamlString(yamlText) {
         if (window.jsyaml) {
             try {
@@ -1859,7 +1966,6 @@
                 document.getElementById("yamlSyntaxStatus").style.color = "var(--danger)";
             }
         } else {
-            // Server-assisted fallback parser for environments without CDN
             fetch("/api/rules/parse", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
@@ -1877,12 +1983,10 @@
                         document.getElementById("yamlSyntaxStatus").style.color = "var(--danger)";
                     }
                 })
-                .catch(() => {
-                });
+                .catch(() => {});
         }
     }
 
-    // Bidirectional sync: Serialize in-memory assertion list to YAML text
     function syncYamlTextFromConfig(thenSave = false) {
         if (window.jsyaml) {
             const outYaml = jsyaml.dump(parsedRulesConfig, {indent: 2, lineWidth: -1, noRefs: true});
@@ -1925,7 +2029,6 @@
         document.getElementById("yamlLinesCount").innerText = `${lines} line${lines === 1 ? '' : 's'}`;
     }
 
-    // Render active rule cards in visual builder
     function renderActiveRuleCards() {
         const container = document.getElementById("activeRulesList");
         const assertions = parsedRulesConfig.assertions || [];
@@ -1989,7 +2092,6 @@
         });
     }
 
-    // Build Rule Object from Form
     function commitBuilderRule() {
         const name = document.getElementById("builderRuleName").value.trim() || "DAX Quality Contract";
         const type = document.getElementById("builderRuleType").value;
@@ -2085,7 +2187,6 @@
             document.getElementById("builderSuffix").value = rule.suffix || "";
         }
 
-        // Scroll to form if in lowcode or split view
         document.querySelector(".lowcode-studio-col").scrollTop = 0;
     }
 
@@ -2211,7 +2312,6 @@
             });
     }
 
-    // Global keyboard shortcut: Ctrl+S or Cmd+S to save rules
     window.addEventListener("keydown", function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
             if (currentSimTab === "rules") {
@@ -2221,7 +2321,6 @@
         }
     });
 
-    // Notifications & Service Handlers
     function notifyUserOnSave(data) {
         if (!("Notification" in window) || Notification.permission !== "granted") return;
         const failed = data.failed || 0;
@@ -2287,8 +2386,7 @@
         if (evtSource) evtSource.close();
 
         fetch("/api/restart", {method: "POST"})
-            .catch(() => {
-            })
+            .catch(() => {})
             .finally(() => {
                 let attempt = 0;
                 const maxAttempts = 25;

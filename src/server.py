@@ -26,6 +26,7 @@ from .parser import (
     get_model_project_dir,
     parse_tmdl_directory,
     resolve_tmdl_directory,
+    suggest_nearby_models,
 )
 from .runner import run_suite
 from .snapshot import freeze_model_baseline
@@ -94,6 +95,7 @@ class AppState:
             "active_lock_yaml": "",
             "active_tests_yaml": "",
             "governance_rules": [],
+            "suggested_models": [str(p) for p in suggest_nearby_models()],
         }
 
         target = initial_model or detect_active_powerbi_model() or find_local_model()
@@ -114,10 +116,10 @@ class AppState:
                     Path.cwd() / "pbi_tests.yml",
                     Path(__file__).resolve().parent.parent / "pbi_tests.yml",
                 ]
-                self.tests_file = next((f for f in possible_test_files if f.is_file()),
-                                       self.project_root / "pbi_tests.yml")
+                self.tests_file = next((f for f in possible_test_files if f.is_file()), self.project_root / "pbi_tests.yml")
 
                 self.last_timestamps = _scan_monitored_timestamps(self.resolved_tmdl, self.lock_file, self.tests_file)
+                PROJECT_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
                 PROJECT_CACHE_FILE.write_text(str(target_path.resolve()), encoding="utf-8")
                 log.info(f"Active model bound to: {self.project_root.name} ({self.resolved_tmdl})")
 
@@ -129,7 +131,7 @@ class AppState:
                 self.latest_payload["status"] = "error"
                 self.latest_payload["error_msg"] = str(e)
 
-        self.run_verification(save_summary=None)
+        self.run_verification(save_summary={"has_changes": True, "summary": f"Model bound to {self.project_root.name if self.project_root else 'model'}", "timestamp": datetime.now().strftime("%H:%M:%S")})
 
     def compute_model_diff(self, new_model: SemanticModel) -> dict:
         if self.previous_model is None:
@@ -169,8 +171,7 @@ class AppState:
         has_changes = bool(added or removed or modified)
         summary_parts = []
         if modified:
-            summary_parts.append(
-                f"Modified {len(modified)} measure(s): " + ", ".join(f"[{m['name']}]" for m in modified[:3]))
+            summary_parts.append(f"Modified {len(modified)} measure(s): " + ", ".join(f"[{m['name']}]" for m in modified[:3]))
         if added:
             summary_parts.append(f"Added {len(added)} measure(s): " + ", ".join(f"[{m}]" for m in added[:3]))
         if removed:
@@ -188,6 +189,8 @@ class AppState:
     def run_verification(self, save_summary: dict | None = None):
         with self.lock:
             if not self.resolved_tmdl or not self.lock_file:
+                self.latest_payload["suggested_models"] = [str(p) for p in suggest_nearby_models()]
+                self.broadcast()
                 return
 
             try:
@@ -258,7 +261,6 @@ class AppState:
                     if clean_measure_name(m.name) not in baseline_measures
                 ]
 
-                # Collect TMDL files and pick the most relevant file to preview
                 tmdl_files_map = {}
                 primary_tmdl_name = ""
                 primary_tmdl_content = ""
@@ -316,11 +318,11 @@ class AppState:
                     "active_lock_yaml": raw_lock_yaml[:2500],
                     "active_tests_yaml": raw_tests_yaml,
                     "governance_rules": test_rules,
+                    "suggested_models": [str(p) for p in suggest_nearby_models()],
                 }
-                log.info(
-                    f"Verification complete: {len(passed_list)} passed, {len(failed_list)} failed ({t_elapsed_ms}ms)")
+                log.info(f"Verification complete: {len(passed_list)} passed, {len(failed_list)} failed ({t_elapsed_ms}ms)")
             except Exception as exc:
-                log.exception(f"Verification failed with unhandled exception: {exc}")
+                log.exception(f"Verification failed: {exc}")
                 self.latest_payload["status"] = "error"
                 self.latest_payload["error_msg"] = str(exc)
 
@@ -378,7 +380,6 @@ def _stop_server_worker():
 
 
 def _restart_server_worker():
-    """Shuts down socket listener cleanly and hands off to child process with clean argv."""
     global SERVER_INSTANCE
     log.info("Restart initiated. Closing server socket listener...")
     time.sleep(0.1)
@@ -390,7 +391,6 @@ def _restart_server_worker():
         log.warning(f"Error closing socket during restart: {e}")
 
     time.sleep(0.3)
-
     python_exe = sys.executable
     clean_argv = [a for a in sys.argv if a != "--restarting"]
 
@@ -401,7 +401,6 @@ def _restart_server_worker():
         import subprocess
         pythonw = Path(python_exe).with_name("pythonw.exe")
         exe = str(pythonw.resolve()) if pythonw.is_file() else python_exe
-        log.info(f"Spawning child worker: {exe} {clean_argv}")
         subprocess.Popen(
             [exe] + clean_argv,
             env=child_env,
@@ -414,7 +413,6 @@ def _restart_server_worker():
         import subprocess
         subprocess.Popen([python_exe] + clean_argv, env=child_env, close_fds=True)
 
-    log.info("Parent process exiting cleanly.")
     os._exit(0)
 
 
@@ -479,16 +477,12 @@ class PBIGuardRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"yaml": rules_yaml}).encode("utf-8"))
 
-        elif parsed.path == "/report":
-            if STATE.project_root:
-                rep = STATE.project_root / "pbi-guard-report.html"
-                if rep.is_file():
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.end_headers()
-                    self.wfile.write(rep.read_bytes())
-                    return
-            self.send_error(404, "Report not yet generated.")
+        elif parsed.path == "/api/suggest-models":
+            models = [str(p) for p in suggest_nearby_models()]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"models": models}).encode("utf-8"))
 
         else:
             self.send_error(404)
@@ -496,7 +490,30 @@ class PBIGuardRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
 
-        if parsed.path == "/api/freeze":
+        if parsed.path == "/api/set-model":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            try:
+                payload = json.loads(body.decode("utf-8"))
+                raw_path = payload.get("path", "").strip().strip('"\'')
+                if not raw_path:
+                    raise ValueError("Model path cannot be empty.")
+                target_path = Path(raw_path)
+                resolved = resolve_tmdl_directory(target_path)
+                if not resolved or not resolved.exists():
+                    raise FileNotFoundError(f"Directory not found: {raw_path}")
+                STATE.set_model(target_path)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status":"ok"}')
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+
+        elif parsed.path == "/api/freeze":
             STATE.freeze_baseline()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -601,13 +618,15 @@ def _background_file_watcher():
             target = detect_active_powerbi_model() or find_local_model()
             if target:
                 STATE.set_model(target)
+            else:
+                time.sleep(1.0)
             continue
 
         current_timestamps = _scan_monitored_timestamps(STATE.resolved_tmdl, STATE.lock_file, STATE.tests_file)
 
         has_delta = (
-                set(current_timestamps.keys()) != set(STATE.last_timestamps.keys())
-                or any(STATE.last_timestamps.get(p) != mtime for p, mtime in current_timestamps.items())
+            set(current_timestamps.keys()) != set(STATE.last_timestamps.keys())
+            or any(STATE.last_timestamps.get(p) != mtime for p, mtime in current_timestamps.items())
         )
 
         if has_delta:
@@ -621,13 +640,9 @@ def _background_file_watcher():
                     break
                 last_seen = new_scan
 
-            # Power BI file release grace period (prevents sharing violation)
             time.sleep(0.1)
-
-            log.info("Writes settled. Executing background verification suite.")
             STATE.last_timestamps = current_timestamps
 
-            # Safe verification with retry if Power BI is still unlocking files
             for attempt in range(3):
                 try:
                     STATE.run_verification()
