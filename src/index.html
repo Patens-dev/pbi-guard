@@ -6,7 +6,7 @@
     <title>PBI Guard | Semantic Governance & Rule Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
           rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <style>
@@ -1045,7 +1045,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(15, 23, 42, 0.4);
+            background: rgba(15, 23, 42, 0.45);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             z-index: 1000;
@@ -1064,12 +1064,18 @@
             border-radius: 20px;
             width: 820px;
             max-width: 92vw;
-            max-height: 82vh;
+            max-height: 85vh;
             display: flex;
             flex-direction: column;
             text-align: left;
             overflow: hidden;
-            box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.2);
+            box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.25);
+            animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.96) translateY(6px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         .modal-header {
@@ -1101,11 +1107,108 @@
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 9px 12px;
             margin-bottom: 6px;
             font-family: var(--font-error);
             font-size: 12px;
             color: var(--text-main);
+            transition: border-color 0.15s ease;
+        }
+
+        .suggest-item:hover {
+            border-color: var(--primary-border);
+            background: #ffffff;
+        }
+
+        /* TUTORIAL / SETUP GUIDE DIALOG STYLES */
+        .tutorial-container {
+            padding: 24px;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .tutorial-steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 720px) {
+            .tutorial-steps-grid { grid-template-columns: 1fr; }
+        }
+
+        .tutorial-step-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tutorial-step-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary-bg);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2px;
+        }
+
+        .tutorial-step-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .tutorial-step-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .tutorial-step-desc code {
+            background: #e2e8f0;
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-family: var(--font-error);
+            color: #0f172a;
+        }
+
+        .pulse-searching {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #b45309;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .searching-spinner {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #d97706;
+            box-shadow: 0 0 8px #d97706;
+            animation: pulseSearching 1.5s infinite;
+        }
+
+        @keyframes pulseSearching {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.75); }
         }
     </style>
 </head>
@@ -1152,7 +1255,7 @@
             <span class="metric-desc" id="valRatioDesc">Failing / Total Assertions</span>
         </div>
 
-        <!-- MODEL TARGET CARD (WITH INSTANT PATH SWITCHER) -->
+        <!-- MODEL TARGET CARD -->
         <div class="metric-card" style="cursor: pointer;" onclick="openModelPickerModal()" title="Click to manually set or switch Power BI model path">
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
                 <span class="metric-label">Model Target</span>
@@ -1242,7 +1345,6 @@
 
         <!-- SPLIT STUDIO: LOW-CODE BUILDER & RAW YAML -->
         <div class="rules-studio-panel" id="rulesStudioPanel" style="display: none;">
-            <!-- Top Controls -->
             <div class="studio-topbar">
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div class="view-mode-pills">
@@ -1268,7 +1370,6 @@
                 </div>
             </div>
 
-            <!-- Quick Recipe Bar -->
             <div class="recipe-chips-wrapper">
                 <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-right:4px;">Quick Presets:</span>
                 <button class="recipe-chip" onclick="applyPresetRecipe('safe_divide')">✨ Safe DIVIDE()</button>
@@ -1278,9 +1379,7 @@
                 <button class="recipe-chip" onclick="applyPresetRecipe('no_calculate')">⚡ Ban CALCULATE in Measures</button>
             </div>
 
-            <!-- Split Work Area -->
             <div class="studio-split-container" id="studioSplitContainer">
-                <!-- LEFT: Low-Code Studio -->
                 <div class="lowcode-studio-col">
                     <div class="rule-form-card">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -1316,7 +1415,6 @@
                             </div>
                         </div>
 
-                        <!-- Target Pattern Input or Model Picker -->
                         <div class="form-row" id="rowTargetPattern">
                             <label class="form-label">Measure Match Pattern (comma-separated)</label>
                             <input type="text" id="builderTargetPattern" class="form-input mono"
@@ -1328,7 +1426,6 @@
                             <select id="builderTargetMeasureSelect" class="form-select"></select>
                         </div>
 
-                        <!-- Dynamic Config: DAX Rules -->
                         <div id="sectionDaxRuleConfig" style="display:flex; flex-direction:column; gap:10px;">
                             <div class="form-row-grid">
                                 <div class="form-row">
@@ -1358,14 +1455,12 @@
                             </div>
                         </div>
 
-                        <!-- Dynamic Config: Formatting -->
                         <div id="sectionFormatConfig" style="display:none;" class="form-row">
                             <label class="form-label">Required Format Pattern (Regex or Literal)</label>
                             <input type="text" id="builderRequiredFormat" class="form-input mono"
                                    placeholder="e.g. ^\\$#,##0.*|^0\\.00%"/>
                         </div>
 
-                        <!-- Dynamic Config: Naming -->
                         <div id="sectionNamingConfig" style="display:none;" class="form-row-grid">
                             <div class="form-row">
                                 <label class="form-label">Must Start With (Prefix)</label>
@@ -1387,7 +1482,6 @@
                         </div>
                     </div>
 
-                    <!-- Active Rules Visual Cards -->
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                             <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Configured Assertions (<span
@@ -1398,7 +1492,6 @@
                     </div>
                 </div>
 
-                <!-- RIGHT: Raw YAML Editor -->
                 <div class="yaml-studio-col">
                     <div class="yaml-editor-header">
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -1430,29 +1523,75 @@
     </section>
 </main>
 
-<!-- MODEL TARGET MODAL (MANUAL INPUT + SUGGESTIONS) -->
-<div id="modelModal" class="overlay" style="display:none;" onclick="if(event.target===this)closeModelPickerModal();">
-    <div class="modal-box" style="width: 650px;">
+<!-- ONBOARDING / SETUP TUTORIAL & MODEL BINDING MODAL (OPEN BY DEFAULT ON SCANNING) -->
+<div id="modelModal" class="overlay" style="display:flex;" onclick="if(event.target===this)closeModelPickerModal();">
+    <div class="modal-box" style="width: 780px;">
         <div class="modal-header">
-            <strong style="color:var(--text-main); font-size:14px;">Bind Power BI Model (.pbip)</strong>
-            <button class="btn btn-secondary btn-sm" onclick="closeModelPickerModal()">✕</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <strong style="color:var(--text-main); font-size:14.5px;">Connect Power BI Workspace</strong>
+                <span class="pulse-searching" id="tutorialPulseBadge">
+                    <span class="searching-spinner"></span>
+                    <span>Scanning for open Power BI models...</span>
+                </span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="closeModelPickerModal()" title="Close dialog">✕</button>
         </div>
-        <div style="padding: 20px; background: #ffffff; display: flex; flex-direction: column; gap: 14px;">
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
-                Enter the path to your <code>.pbip</code> file or the <code>definition/</code> folder. PBI Guard will remember this path and verify on every save.
-            </p>
 
-            <div class="form-row">
-                <label class="form-label">Model File or Folder Path</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="inputManualPath" class="form-input mono" style="flex:1;" placeholder="e.g. D:\dev\powerbitests\test1" />
-                    <button class="btn btn-primary" onclick="submitManualPath()">Bind Model</button>
+        <div class="tutorial-container">
+            <!-- 3-STEP TUTORIAL -->
+            <div class="tutorial-steps-grid">
+                <div class="tutorial-step-card">
+                    <div class="tutorial-step-badge">1</div>
+                    <div class="tutorial-step-title">Save as .PBIP</div>
+                    <div class="tutorial-step-desc">
+                        In Power BI Desktop, select <strong>File &gt; Save As</strong> and change the format to <code>Power BI Project (*.pbip)</code>.
+                    </div>
+                </div>
+
+                <div class="tutorial-step-card">
+                    <div class="tutorial-step-badge">2</div>
+                    <div class="tutorial-step-title">Keep File Open</div>
+                    <div class="tutorial-step-desc">
+                        Keep Power BI Desktop open. PBI Guard scans your window title and running process in the background.
+                    </div>
+                </div>
+
+                <div class="tutorial-step-card">
+                    <div class="tutorial-step-badge">3</div>
+                    <div class="tutorial-step-title">Or Bind Path</div>
+                    <div class="tutorial-step-desc">
+                        If not detected automatically within a few seconds, paste your project folder below or pick a discovered path.
+                    </div>
                 </div>
             </div>
 
-            <div id="suggestedModelsContainer" style="margin-top: 10px;">
-                <label class="form-label" style="margin-bottom: 6px; display: block;">Discovered Models on Local Machine</label>
-                <div id="suggestedModelsList" style="max-height: 180px; overflow-y: auto;"></div>
+            <!-- DIRECT MANUAL INPUT -->
+            <div style="background: #fafbfe; border: 1px solid var(--card-border); border-radius: 14px; padding: 16px;">
+                <label class="form-label" style="display:block; margin-bottom: 6px;">Model Directory or .pbip File Path</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="inputManualPath" class="form-input mono" style="flex:1;" placeholder="e.g. D:\dev\powerbitests\test1 or D:\...\definition" />
+                    <button class="btn btn-primary" onclick="submitManualPath()">Bind Model</button>
+                </div>
+                <span style="font-size: 11px; color: var(--text-subtle); display: block; margin-top: 6px;">
+                    Accepts the root project folder, the <code>.pbip</code> file, or the inner <code>*.SemanticModel/definition</code> folder.
+                </span>
+            </div>
+
+            <!-- DISCOVERED MODELS LIST -->
+            <div id="suggestedModelsContainer">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label class="form-label">Discovered Models On Your PC</label>
+                    <button class="btn btn-secondary btn-sm" onclick="fetchSuggestedModels()" style="font-size:10.5px; padding:2px 8px;">↻ Re-scan</button>
+                </div>
+                <div id="suggestedModelsList" style="max-height: 160px; overflow-y: auto;">
+                    <span style="font-size:12px; color:var(--text-subtle);">Searching for nearby .pbip models...</span>
+                </div>
+            </div>
+
+            <!-- FOOTER HINT -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+                <span style="font-size: 11.5px; color: var(--text-muted);">Once bound, PBI Guard permanently remembers this model.</span>
+                <button class="btn btn-secondary btn-sm" onclick="closeModelPickerModal()">I'll wait in background</button>
             </div>
         </div>
     </div>
@@ -1497,6 +1636,7 @@
     let currentSimTab = 'tmdl';
     let selectedTmdlFile = null;
     let lastRenderedTimestamp = null;
+    let userDismissedTutorial = false;
 
     let parsedRulesConfig = {version: 1, assertions: []};
     let editingRuleIndex = -1;
@@ -1525,6 +1665,9 @@
 
     checkNotificationStatus();
 
+    // Immediately fetch candidate models on initial page boot
+    fetchSuggestedModels();
+
     const evtSource = new EventSource("/events");
 
     evtSource.onmessage = function (e) {
@@ -1542,8 +1685,10 @@
         const failed = data.failed || 0;
         const passed = data.passed || 0;
 
+        const isScanning = !data.model_path || data.model_name === "Scanning...";
+
         document.getElementById("modelNameText").innerText = data.model_name || "Active Model";
-        document.getElementById("modelPathText").innerText = data.model_path || (data.model_name === "Scanning..." ? "Click to set model folder..." : "");
+        document.getElementById("modelPathText").innerText = data.model_path || (isScanning ? "Click to set model folder..." : "");
         document.getElementById("lastCheckTimeText").innerText = data.last_check || "—";
         document.getElementById("valLatency").innerText = (data.elapsed_ms || 0) + " ms evaluation";
         document.getElementById("valTotalMeasures").innerText = data.measures_count || 0;
@@ -1552,6 +1697,13 @@
         ratioEl.innerText = `${failed} / ${total}`;
         ratioEl.className = failed > 0 ? "metric-val fail" : "metric-val pass";
         document.getElementById("valRatioDesc").innerText = failed > 0 ? "Breaches detected" : "All contracts verified";
+
+        // Auto-show when scanning (unless dismissed); auto-hide once bound
+        if (isScanning && !userDismissedTutorial) {
+            document.getElementById("modelModal").style.display = "flex";
+        } else if (!isScanning) {
+            document.getElementById("modelModal").style.display = "none";
+        }
 
         const diffAlert = document.getElementById("saveDiffAlert");
         if (data.last_change && data.last_change.has_changes) {
@@ -1583,7 +1735,10 @@
         renderInspector(data);
     }
 
-    function openModelPickerModal() {
+    function openModelPickerModal(isAuto = false) {
+        if (!isAuto) {
+            userDismissedTutorial = false;
+        }
         document.getElementById("modelModal").style.display = "flex";
         if (currentPayload && currentPayload.model_path) {
             document.getElementById("inputManualPath").value = currentPayload.model_path;
@@ -1592,6 +1747,7 @@
     }
 
     function closeModelPickerModal() {
+        userDismissedTutorial = true;
         document.getElementById("modelModal").style.display = "none";
     }
 
@@ -1610,7 +1766,7 @@
         list.innerHTML = "";
 
         if (!models || models.length === 0) {
-            list.innerHTML = `<span style="font-size:12px; color:var(--text-subtle);">No nearby .pbip files discovered automatically. Paste the folder path above.</span>`;
+            list.innerHTML = `<span style="font-size:12px; color:var(--text-subtle);">No nearby .pbip files discovered yet. Enter the path in the box above.</span>`;
             return;
         }
 
