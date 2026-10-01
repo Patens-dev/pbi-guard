@@ -1,83 +1,183 @@
-# pbi-guard
+# PBI Guard
 
-Automated contract testing, architectural linting, and governance for Power BI semantic models (`.pbip` / TMDL) .
+**The automated business logic firewall and governance studio for Power BI (`.pbip` / TMDL).**
 
-Run DAX logic checks, column and tabular modeling assertions, and auditable UAT sign-off reports locally in milliseconds, without opening Power BI Desktop, writing complex regular expressions, or configuring cloud credentials .
-
----
-
-## The Complete Guide: Why, When & How
-
-### 1. Why `pbi-guard` Exists
-* **The "Executive Embarrassment" Filter:** Dashboard consumers rarely notice subtle calculation errors; errors are usually caught by the leadership team during Monday morning executive meetings.
-* **The "Magic Number" Epidemic:** Developers under pressure frequently slip arbitrary multipliers or scalar adjustments (`* 1.042` or `+ 15000`) into production measures to force dashboards to match manual spreadsheets.
-* **Columns vs. Measures Disambiguation:** Confusing table columns with explicit measures leads to silent calculation errors and implicit aggregations (`Sum of Year`). `pbi-guard` validates both object types with distinct contracts.
-* **The Compiler for AI Agents:** When using Claude or Cursor via MCP to modify TMDL files, probabilistic models hallucinate code or invent non-existent columns. `pbi-guard` provides a deterministic gate that prevents unvetted changes from being saved or deployed.
-* **Ending "YOLO Friday" Releases:** Replacing manual, error-prone spot checks in Excel with automated, deterministic assertions that run in under 50 milliseconds.
+Catch formula drift, unauthorized multipliers, and broken metrics in real time. Runs silent, deterministic AST checks offline on every `Ctrl+S` in under 50ms, with native Power BI External Tools ribbon integration and an interactive Low-Code / Raw YAML Test Studio
 
 ---
 
-### 2. When to Use It
-| Stage | Trigger | Purpose |
-| :--- | :--- | :--- |
-| **Local Dev** | Before saving or staging git commits | Verify DAX syntax, check for uncompressed calculated columns, and validate formula definitions locally. |
-| **AI / MCP Workflows** | After an LLM/agent edits TMDL | Validate agent output. If `pbi-guard` fails, pipe the failure output back to the agent for self-correction. |
-| **Production UAT Sign-Off** | Release deployment pipeline | Generate a formal `--export-report uat_audit.md` artifact attached to release tickets for stakeholder sign-off . |
+## Key Capabilities
+
+* **Silent Real-Time `Ctrl+S` Watcher:** Monitors active Power BI Developer Mode (`.pbip`) TMDL definitions in the background. Evaluates formulas on save with zero terminal window flashes or command popups.
+* **Split Test Studio (Low-Code Form <-> Raw YAML):** Build governance rules visually with pickers from active semantic model measures, or write raw YAML in a synchronized side-by-side editor.
+* **1-Click Recipe Presets:** Pre-built governance assertions for safe `DIVIDE()`, banning arbitrary scalar adjustments/magic numbers, currency and percentage masks, and clean naming conventions.
+* **Automated Baseline Pinning (`freeze`):** Snapshot existing models character-for-character into an immutable contract baseline (`pbi-guard.lock.yml`) with one click.
+* **Power BI External Tools Integration:** Launches directly from the Power BI Desktop ribbon tab via a windowless native manifest.
+* **100% Offline Static Analysis:** Pure AST parsing without launching Analysis Services or requiring cloud capacity, credentials, or network telemetry.
 
 ---
-
-### 3. How to Use It
-
-#### Local Execution
-Run against any `.pbip` project file, `.SemanticModel` directory, or raw `definition/` folder :
-
-```bash
-# Run standard test suite
-python main.py -c pbi_tests.yml -m "../path/to/Sales.pbip"
-
-# Run tests and generate an auditable UAT sign-off report (.md, .html, or .json)
-python main.py -c pbi_tests.yml -m "../path/to/Sales.pbip" --export-report uat_audit.md
-```
 
 ## Installation
 
-Requires Python 3.9+.
+### Method 1: Portable Release (Recommended for Business Analysts)
+*No administrator rights or compilation required. Works on locked-down corporate laptops.*
+
+1. Download **`pbi-guard-windows.zip`** from [Releases](https://github.com/flaviu01/pbi-guard/releases).
+2. Extract the archive and double-click **`install.cmd`**.
+   * It installs `pyyaml`, copies the app to `%LOCALAPPDATA%\pbi-guard`, and registers the External Tool ribbon button.
+3. Restart **Power BI Desktop**. PBI Guard will appear in the **External Tools** ribbon tab .
+4. *(Optional)* You can safely delete the downloaded `.zip` and extracted folder.
+
+To remove PBI Guard later, double-click **`uninstall.cmd`** .
+
+---
+
+### Method 2: Git & Developer Setup
+
+Requires Python 3.10+ (available from python.org or the Microsoft Store with no admin rights):
 
 ```bash
-git clone https://github.com/flaviu01/pbi-guard.git
+# Clone the repository
+git clone [https://github.com/flaviu01/pbi-guard.git](https://github.com/flaviu01/pbi-guard.git)
 cd pbi-guard
+
+# Install required dependencies
 pip install pyyaml
+
+# Register the ribbon button in Power BI Desktop
+python main.py pbitool
 ```
 
 ---
 
-## Full Test Suite Example (`pbi_tests.yml`)
+## How It Works
+
+```text
+Power BI Desktop (Ctrl+S)
+        │  (Writes .tmdl files to disk)
+        ▼
+PBI Guard Silent Watcher (<50ms AST Parse)
+        │
+        ├── Checks pbi-guard.lock.yml (Baseline contracts)
+        └── Checks pbi_tests.yml      (Governance rules)
+        │
+   ┌────┴─────────────────────────────┐
+   ▼                                  ▼
+[All Passed]                  [Contract Breach]
+Toast: "All contracts intact"   Toast: "PR Blocked: [Gross Margin %] diverged"
+Web Dashboard: Green          Web Dashboard: Shows diff & offending line
+```
+
+---
+
+## CLI Usage
+
+PBI Guard auto-detects running Power BI models, cached `.pbip` workspaces, or local directories :
+
+```bash
+# Launch the real-time Web Dashboard & Test Studio (runs watcher)
+python main.py web
+
+# Manually verify model against lockfile and test assertions
+python main.py check
+
+# Freeze active model measures into a certified baseline lockfile (pbi-guard.lock.yml)
+python main.py freeze
+
+# Register / unregister External Tools ribbon button
+python main.py pbitool
+python main.py pbitool --uninstall
+```
+
+---
+
+## Split Studio (Low-Code & Raw YAML)
+
+When running `python main.py web` (or opening via Power BI's External Tools ribbon) , navigate to the **Governance & Test Studio** tab at `[http://127.0.0.1:8765](http://127.0.0.1:8765)` :
+
+* **Low-Code Studio (Left):**
+  * **Target Scope:** Target all measures (`*`), wildcard patterns (`*Margin*, *Ratio*`), or pick directly from auto-discovered model measures .
+  * **Rule Types:** Configure DAX function policies (`dax_rule`), format masks (`measure_format`), and naming conventions (`measure_naming`) .
+  * **Interactive Actions:** Edit, duplicate, or delete rules visually .
+* **Raw YAML Editor (Right):**
+  * Live two-way synchronization: modifications in the visual builder update the YAML; edits in the YAML update the visual cards .
+  * Real-time YAML syntax validator prevents saving corrupted files .
+  * **Ctrl+S / Cmd+S:** Hotkey to immediately save `pbi_tests.yml` and trigger re-verification across all model measures .
+
+---
+
+## Rule Configuration Reference (`pbi_tests.yml`)
 
 ```yaml
 version: 1
 
 assertions:
   # ==============================================================================
-  # 1. STORAGE & ARCHITECTURE
+  # 1. DAX LOGIC CONTRACTS & POLICY RULES
   # ==============================================================================
 
-  # Keep uncompressed memory down
-  - name: "Arch: No calculated columns in financials table"
+  # Enforce safe division on all ratio and percentage measures
+  - name: "DAX: Safe division required for margin and ratio metrics"
+    type: dax_rule
+    measures_matching: ["*Margin*", "*Ratio*", "*%*"]
+    must_call: "DIVIDE"
+
+  # Block unapproved fudge factors, arbitrary multipliers, or manual plugs
+  - name: "Integrity: No hardcoded numeric scalar adjustments in financial KPIs"
+    type: dax_rule
+    measures_matching: ["*Sales*", "*Profit*", "*COGS*"]
+    forbid_raw_numeric_literals: true
+    allowed_literals: [0, 1]
+
+  # Forbid costly or anti-pattern functions in base measures
+  - name: "Performance: Forbid CALCULATE inside simple sum aggregations"
+    type: dax_rule
+    measures_matching: ["*Raw*", "*Base*"]
+    forbid_calls: ["CALCULATE"]
+
+  # Pin critical business formula character-for-character
+  - name: "Contract: Gross Profit formula logic is pinned"
+    type: dax_exact
+    measure: "[Gross Profit]"
+    expected: "[Total Sales] - [Total COGS]"
+
+  # Enforce metric dependency hierarchy (DAG)
+  - name: "Lineage: Net Margin must inherit from certified Gross Profit"
+    type: dax_dependency_chain
+    measure: "[Net Margin %]"
+    must_depend_on:
+      - "[Gross Profit]"
+      - "[Total Sales]"
+
+  # Block measures from referencing raw fact columns directly (enforce DRY base measures)
+  - name: "Governance: Ratio metrics must not query raw fact columns directly"
+    type: column_usage_rule
+    measures_matching: ["*Margin*", "*Ratio*"]
+    forbid_column_references:
+      - "financials[Sales]"
+      - "financials[COGS]"
+
+  # ==============================================================================
+  # 2. STORAGE & TABULAR ARCHITECTURE
+  # ==============================================================================
+
+  # Keep RAM uncompressed bloat down
+  - name: "Arch: No calculated columns in transaction tables"
     type: no_calculated_columns
     table: "financials"
 
-  # Prevent file size bloat from hidden calendars
-  - name: "Arch: Block auto date/time hidden tables"
+  # Prevent silent file size explosion from auto-generated calendars
+  - name: "Arch: Block hidden auto date/time tables"
     type: no_auto_date_tables
 
-  # Ensure essential schema columns exist after warehouse ETL
-  - name: "Arch: Core base columns exist in financials"
+  # Ensure upstream warehouse columns were not renamed or dropped during ETL
+  - name: "Arch: Essential fact columns exist in schema"
     type: column_exists
     table: "financials"
-    columns: ["Sales", "Profit", "COGS", "Year", "Date"]
+    columns: ["Sales", "Profit", "COGS", "Date"]
 
-  # Stop numeric IDs, years, or zip codes from auto-summing in visuals
-  - name: "Arch: Prevent default aggregation on Year column"
+  # Prevent numeric IDs, postal codes, or years from auto-summing in visuals
+  - name: "Arch: Prevent default aggregation on Year attribute"
     type: column_rule
     table: "financials"
     column: "Year"
@@ -85,197 +185,53 @@ assertions:
     data_type: "int64"
 
   # ==============================================================================
-  # 2. DAX LOGIC CONTRACTS & FORMULA PINNING
+  # 3. GOVERNANCE & PRESENTATION FORMATTING
   # ==============================================================================
 
-  # Ensure critical business measures are never renamed or deleted
-  - name: "DAX: Core sales measure must exist"
-    type: measure_exists
-    measure: "[Total Sales]"
-
-  # Block raw slash division across all ratio and margin metrics
-  - name: "DAX: Safe division required for all ratio and margin metrics"
-    type: dax_rule
-    measures_matching: ["*Margin*", "*Ratio*", "*%*"]
-    must_call: "DIVIDE"
-
-  # Strict zero-tolerance check for raw slash on board-level metrics
-  - name: "DAX: Forbid raw slash division anti-pattern"
-    type: dax_rule
-    measure: "[Profit Margin %]"
-    forbid_operator: "/"
-
-  # Ensure metric reuse (DRY)
-  - name: "DAX: Complex metrics must reference base measures"
-    type: dax_rule
-    measure: "[Gross Profit]"
-    references: ["[Total Sales]", "[Total COGS]"]
-
-  # Freeze financial KPI logic character-for-character
-  - name: "Contract: Gross Profit formula definition is pinned"
-    type: dax_exact
-    measure: "[Gross Profit]"
-    expected: "[Total Sales] - [Total COGS]"
-
-  # Enforce calculation lineage and metric inheritance (DAG)
-  - name: "DAG: Enforce metric dependency hierarchy for Profit Margin"
-    type: dax_dependency_chain
-    measure: "[Profit Margin %]"
-    must_depend_on:
-      - "[Gross Profit]"
-      - "[Total Sales]"
-
-  # ==============================================================================
-  # 3. INTEGRITY & ANTI-CHEAT (MAGIC NUMBERS & COLUMN SCOPING)
-  # ==============================================================================
-
-  # Catch magic numbers, arbitrary multipliers (* 1.042), and scalar adjustments
-  - name: "Integrity: No hardcoded scalar adjustments in financial KPIs"
-    type: dax_rule
-    measures_matching: ["*Sales*", "*Profit*", "*COGS*"]
-    forbid_raw_numeric_literals: true
-    allowed_literals: [0, 1]
-
-  # Stop metrics from querying raw fact columns directly instead of base measures
-  - name: "Governance: Ratio metrics must not query raw fact columns directly"
-    type: column_usage_rule
-    measures_matching: ["*Margin*", "*Ratio*", "*%*"]
-    forbid_column_references:
-      - "financials[Sales]"
-      - "financials[COGS]"
-
-  # ==============================================================================
-  # 4. GOVERNANCE & FORMATTING
-  # ==============================================================================
-
-  # Enforce currency strings to prevent raw decimals on cards
-  - name: "Gov: Financial measures must have currency format strings"
+  # Enforce standardized currency format strings on monetary cards
+  - name: "Gov: Financial KPIs must specify explicit currency formatting"
     type: measure_format
-    measures: ["[Total Sales]", "[Total COGS]", "[Gross Profit]"]
-    format: "currency"
+    measures_matching: ["*Sales*", "*Revenue*", "*Profit*"]
+    format: "$#,##0;($#,##0);-"
 
-  # Enforce percentage formatting to avoid 0.24 instead of 24%
-  - name: "Gov: Percentage measures must specify percentage formatting"
+  # Enforce percentage format
+  - name: "Gov: Margin metrics must specify percentage format"
     type: measure_format
     measures_matching: ["*%*", "*Margin*"]
-    format: "percentage"
+    format: "0.0%"
 
-  # Eliminate obsolete technical prefixes on measures for self-service usability
+  # Eliminate obsolete technical prefixes for clean self-service visual building
   - name: "Gov: Enforce clean measure naming conventions"
     type: measure_naming
     forbid_prefixes: ["m_", "meas_", "calc_"]
-
-  # Eliminate Hungarian notation or developer prefixes on table columns
-  - name: "Gov: Enforce clean column naming (catches m_Country)"
-    type: column_naming
-    table: "financials"
-    forbid_prefixes: ["m_", "meas_", "calc_"]
-
-  # Validate currency formatting directly on visible table columns
-  - name: "Gov: Profit column must have currency format string"
-    type: column_format
-    table: "financials"
-    column: "Profit"
-    format: "currency"
 ```
 
 ---
 
-## Assertion Reference
+## Assertion Types Quick Reference
 
-### Storage & Architecture
-
-#### `no_calculated_columns`
-* **Why:** Calculated columns evaluate row-by-row and sit in RAM uncompressed. Fact tables with millions of rows quickly exhaust capacity .
-* **When:** On all transaction/fact tables (`*Fact*`, `financials`, `Orders`) .
-* **Parameters:** `table` (string/wildcard) .
-
-#### `no_auto_date_tables`
-* **Why:** Power BI Desktop silently generates a hidden calendar table for every date column, causing massive file bloat .
-* **When:** Across all production models; teams should use a dedicated `DimDate` dimension .
-* **Parameters:** None .
-
-#### `column_exists`
-* **Why:** Upstream warehouse migrations or ETL script changes can silently drop or rename columns, causing visual breakages at refresh time.
-* **When:** To enforce explicit schema contracts between your data warehouse and semantic models.
-* **Parameters:** `table` (string), `columns` (list of strings) or `column` (string).
-
-#### `column_rule`
-* **Why:** By default, Power BI attempts to sum numeric fields, displaying `Sum of Year: 6,075` on executive card visuals .
-* **When:** On foreign keys, IDs, Postal Codes, and Date attributes (`summarize_by: "none"`) .
-* **Parameters:** `table`, `column`, `summarize_by`, `hidden`, `data_type` (`"int64"`, `"double"`, `"string"`, `"dateTime"`).
+| Assertion Type | Purpose | Key Parameters |
+| :--- | :--- | :--- |
+| `dax_rule` | Enforces required or forbidden functions, operators, and bans magic numbers | `must_call`, `forbid_calls`, `forbid_raw_numeric_literals`, `allowed_literals` |
+| `dax_exact` | Character-for-character formula lock, ignoring whitespace drift | `measure`, `expected` |
+| `dax_dependency_chain` | Enforces calculation inheritance through DAG traversal | `measure`, `must_depend_on`, `forbid_dependencies` |
+| `column_usage_rule` | Prevents measures from querying raw fact columns directly | `measures_matching`, `forbid_column_references` |
+| `no_calculated_columns`| Blocks uncompressed in-memory calculated columns | `table` |
+| `no_auto_date_tables`  | Blocks hidden auto date-time hierarchy tables | None |
+| `column_exists`        | Verifies warehouse ETL schema presence | `table`, `columns` |
+| `column_rule`          | Enforces `summarize_by: none` and data types on attributes | `table`, `column`, `summarize_by`, `data_type` |
+| `measure_format`       | Enforces currency or percentage format strings on cards | `measures_matching`, `format` |
+| `measure_naming`       | Bans developer prefixes (`m_`, `calc_`) on business measures | `forbid_prefixes`, `suffix` |
 
 ---
 
-### DAX Logic Contracts & Lineage
+## Editions
 
-#### `dax_exact`
-* **Why:** Broad linters pass even if calculations are inverted (e.g., `DIVIDE([COGS], [Sales])` passes a loose check). `dax_exact` freezes the formula definition character-for-character, ignoring trivial whitespace drift.
-* **When:** On core board-level financial metrics (`[Gross Profit]`, `[EBITDA]`, `[ARR]`).
-* **Parameters:** `measure` (string), `expected` (string DAX expression).
-
-#### `dax_dependency_chain`
-* **Why:** Enforces measure inheritance via Directed Acyclic Graph (DAG) traversal. Prevents developers or AI agents from skipping intermediate base metrics and querying raw columns directly.
-* **When:** On secondary and tertiary metrics (`[Net Margin %]` must depend on `[Net Profit]`, which must depend on `[Total Sales]`).
-* **Parameters:** `measure` (string), `must_depend_on` (list of strings), `forbid_dependencies` (list of strings), `direct_only` (bool, default `false`).
-
-#### `column_usage_rule`
-* **Why:** Prevents column disambiguation errors (e.g., writing time-intelligence calculations against `FactSales[OrderDate]` instead of `DimDate[Date]`).
-* **When:** Guarding time-intelligence measures or ensuring ratio calculations only query certified dimensions.
-* **Parameters:** `measures_matching`, `forbid_column_references`, `must_reference_tables`, `allowed_tables`, `exclude_measures`.
-
-#### `dax_rule`
-* **Why:** General-purpose DAX validator. Strips comments and string literals to prevent false positives .
-* **When:** Enforcing safe functions, blocking `/` division, and catching hardcoded numbers .
-* **Parameters:** 
-  * `must_call`: Function name(s) required (e.g., `DIVIDE`) .
-  * `forbid_operator`: Disallowed operator (e.g., `"/"`) .
-  * `references`: Base measure references required (DRY) .
-  * `forbid_raw_numeric_literals`: Set `true` to block magic numbers.
-  * `allowed_literals`: Whitelist acceptable numbers (e.g., `[0, 1]`).
-
----
-
-### Governance & Formatting
-
-#### `measure_format`
-* **Why:** Prevents raw floating-point numbers from rendering on cards (e.g., displays `$1,000,000` instead of `1000000.32891`, and `24%` instead of `0.24`) .
-* **When:** On all customer-facing or executive semantic models .
-* **Parameters:** `measures`, `measures_matching`, `format` (`"currency"`, `"percentage"`, or custom mask) .
-
-#### `column_format`
-* **Why:** When numeric fact columns are left visible in report visuals, unformatted sums look unpolished.
-* **When:** On any numeric or currency database columns exposed directly to report authors.
-* **Parameters:** `table`, `column` (or `columns` / `columns_matching`), `format` (`"currency"`, `"percentage"`).
-
-#### `measure_naming`
-* **Why:** Bans legacy Hungarian notation and technical prefixes that confuse self-service business users in the visual field picker .
-* **When:** Global model governance .
-* **Parameters:** `forbid_prefixes` (list of prefixes to disallow) .
-
-#### `column_naming`
-* **Why:** Prevents technical prefixes (`m_`, `calc_`, `f_`) on imported table columns to keep field lists clean and avoid mistaking columns for measures.
-* **When:** Global schema governance across dimension and fact tables.
-* **Parameters:** `table` (optional, defaults to `*`), `forbid_prefixes`, `forbid_patterns`.
-
----
-
-## Automated UAT & CYA Sign-Off Reports
-
-Use `--export-report <path>` to export an auditable compliance artifact in **Markdown (`.md`)**, **HTML (`.html`)**, or **JSON (`.json`)** :
-
-```bash
-python main.py -c pbi_tests.yml -m ./Sales.SemanticModel --export-report uat_audit.md
-```
-
-The generated report includes:
-1. **Formal Stakeholder UAT Sign-Off Table:** Prepared for BI Engineers, Domain Owners, and Governance Leads.
-2. **Deterministic Assertion Log:** Full pass/fail audit records with diff diagnostics for CI logs.
-3. **Semantic Model Inventory:** Summary of all tables, business measures, and calculated columns.
-4. **Git Metadata:** Embedded commit SHA and branch name for deployment tracking.
+* **Community (Open Source):** Free forever under the Apache 2.0 license. Includes unlimited local model inspection, the real-time background watcher, the Low-Code / YAML Studio, and External Tools ribbon integration .
+* **Enterprise:** Tailored for teams operating Git pipelines. Adds Azure DevOps Pipeline tasks, GitHub Actions PR merge blockers, automated pull request inline formula diff bots, and centralized organization-wide rule sync.
 
 ---
 
 ## License
 
-MIT License - Copyright (c) 2026 Patens.dev. Free for commercial and private use.
+Apache License 2.0. Free for personal, commercial, and enterprise use.

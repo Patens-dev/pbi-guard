@@ -1,0 +1,67 @@
+name: Release Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'v0.1.0'
+        required: true
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine Version Tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ github.event.inputs.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
+
+      - name: Stage and Package Clean Zip
+        run: |
+          # 1. Create a clean staging directory
+          STAGE_DIR="pbi-guard-${TAG}-windows"
+          mkdir -p "$STAGE_DIR"
+
+          # 2. Copy only distribution assets (avoids .git, tests/, docs/, etc.)
+          cp -r src "$STAGE_DIR/"
+          cp main.py "$STAGE_DIR/"
+          cp install.cmd "$STAGE_DIR/"
+          cp uninstall.cmd "$STAGE_DIR/"
+          cp README.md "$STAGE_DIR/"
+
+          # 3. Strip any residual python cache artifacts
+          find "$STAGE_DIR" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find "$STAGE_DIR" -type f -name "*.pyc" -delete 2>/dev/null || true
+
+          # 4. Create the distribution zip
+          zip -r "${STAGE_DIR}.zip" "$STAGE_DIR"
+
+          # 5. Generate SHA256 checksum for IT security verification
+          sha256sum "${STAGE_DIR}.zip" > "${STAGE_DIR}.zip.sha256"
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: "PBI Guard ${{ env.TAG }}"
+          files: |
+            pbi-guard-*-windows.zip
+            pbi-guard-*-windows.zip.sha256
+          generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -1,291 +1,1010 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PBI Guard: The Business Logic Firewall for Power BI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>PBI Guard | Instant DAX Debugger & Change Tracker for Power BI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* FOCUSED ANALYST SIMULATOR */
+        .reconcile-card {
+            background: var(--card-bg, rgba(255, 255, 255, 0.95));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border, rgba(226, 232, 240, 0.85));
+            border-radius: 20px;
+            box-shadow: 0 20px 40px -12px rgba(100, 116, 139, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.7);
+            overflow: hidden;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .sim-top-banner {
+            padding: 14px 22px;
+            background: #f8fafc;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12.5px;
+        }
+
+        .sim-canvas {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* POWER BI DASHBOARD MOCKUP */
+        .pbi-dashboard-mockup {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .pbi-window-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11px;
+            color: #64748b;
+            font-family: var(--font-sans);
+        }
+
+        .pbi-window-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .pbi-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .pbi-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pbi-metric-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            position: relative;
+        }
+
+        .pbi-metric-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .pbi-metric-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+
+        .pbi-metric-card.broken {
+            border: 2px solid #f87171;
+            background: #fff5f5;
+        }
+
+        .pbi-metric-card.broken .pbi-metric-value {
+            color: #dc2626;
+        }
+
+        .pbi-metric-card.fixed-good {
+            border: 2px solid #34d399;
+            background: #f0fdf4;
+        }
+
+        .pbi-metric-card.fixed-good .pbi-metric-value {
+            color: #059669;
+        }
+
+        .pbi-error-bubble {
+            position: absolute;
+            top: -10px;
+            right: -6px;
+            background: #dc2626;
+            color: #ffffff;
+            font-size: 9.5px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
+            animation: pulseAlert 1.8s infinite;
+        }
+
+        @keyframes pulseAlert {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        /* ANALYST DIALOGUE CALLOUT */
+        .analyst-thought-box {
+            background: #fff7ed;
+            border-left: 4px solid #ea580c;
+            border-radius: 0 10px 10px 0;
+            padding: 12px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 13px;
+            color: #9a3412;
+            line-height: 1.5;
+        }
+
+        .analyst-thought-box.checkpoint-found {
+            background: #f5f3ff;
+            border-left-color: #7c3aed;
+            color: #5b21b6;
+        }
+
+        .analyst-thought-box.success {
+            background: #ecfdf5;
+            border-left-color: #059669;
+            color: #065f46;
+        }
+
+        /* CHECKPOINT VERIFICATION VIEW (FEATURE SHOWCASE) */
+        .checkpoint-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .checkpoint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .checkpoint-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 700;
+            background: #ede9fe;
+            color: #6d28d9;
+            padding: 3px 10px;
+            border-radius: 999px;
+        }
+
+        .test-rows-mini {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .test-row-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .test-row-item.fail {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            border-left: 4px solid #e11d48;
+        }
+
+        .test-tag {
+            font-weight: 700;
+            font-size: 10.5px;
+            padding: 2px 7px;
+            border-radius: 4px;
+        }
+
+        .test-tag.pass {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .test-tag.fail {
+            background: #ffe4e6;
+            color: #be123c;
+        }
+
+        /* FEATURE LABELS FOR THE CHECKPOINT LIST */
+        .feat-tag {
+            font-size: 9.5px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-family: var(--font-sans);
+            flex-shrink: 0;
+        }
+
+        .feat-gov {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .feat-policy {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .feat-arch {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .feat-meas {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .feat-breach {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* THE VISUAL DIFF GRID */
+        .diff-display-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        @media (max-width: 640px) {
+            .diff-display-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .formula-card {
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .formula-card.before {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+
+        .formula-card.after {
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+        }
+
+        .formula-card-title {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .formula-card.before .formula-card-title {
+            color: #166534;
+        }
+
+        .formula-card.after .formula-card-title {
+            color: #991b1b;
+        }
+
+        .formula-text {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #0f172a;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .highlight-broken {
+            background: #fee2e2;
+            color: #b91c1c;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            border: 1px dashed #ef4444;
+        }
+
+        /* ACTION ROW */
+        .sim-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            padding-top: 6px;
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .btn-reconcile-action {
+            background: var(--brand-dark);
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 999px;
+            font-size: 13.5px;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(18, 20, 23, 0.2);
+            transition: all 0.18s ease;
+        }
+
+        .btn-reconcile-action:hover {
+            background: #27272a;
+            transform: translateY(-1px);
+        }
+
+        .btn-reconcile-action.restore-btn {
+            background: #059669;
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+        }
+
+        .btn-reconcile-action.restore-btn:hover {
+            background: #047857;
+        }
+
+        /* 3 SIMPLE WORKFLOW STEPS */
+        .simple-steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 980px;
+            margin: 40px auto 60px;
+            padding: 0 20px;
+        }
+
+        @media (max-width: 768px) {
+            .simple-steps-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .simple-step-card {
+            background: var(--card-bg, rgba(255, 255, 255, 0.9));
+            border: 1px solid var(--card-border, rgba(226, 232, 240, 0.85));
+            border-radius: 18px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 8px 24px -6px rgba(100, 116, 139, 0.06);
+        }
+
+        .step-badge-num {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--primary-light, #eef2ff);
+            color: var(--primary, #4f46e5);
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        .step-badge-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .step-badge-desc {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="aurora-bg"></div>
+<div class="aurora-bg"></div>
 
-  <!-- NAVBAR -->
-  <header class="nav-wrapper" id="navWrapper">
+<!-- NAVBAR -->
+<header class="nav-wrapper" id="navWrapper">
     <nav class="navbar">
-      <a href="index.html" class="nav-brand">
-        <div class="brand-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
+        <a href="#" class="nav-brand">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>PBI Guard</span>
+        </a>
+
+        <ul class="nav-links">
+            <li><a href="#how-it-works" class="nav-link">How it Works</a></li>
+            <li><a href="#simulator" class="nav-link">Live Demo</a></li>
+            <li><a href="#articles" class="nav-link">Articles</a></li>
+            <li><a href="#editions" class="nav-link">Get the App</a></li>
+        </ul>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn-nav-enterprise" onclick="openEnterpriseModal()">Team Licenses</button>
+            <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" class="nav-cta" title="GitHub Repository">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                <span class="desktop-only">GitHub</span>
+            </a>
         </div>
-        <span>PBI Guard</span>
-      </a>
-
-      <ul class="nav-links">
-        <li><a href="index.html" class="nav-link active">Overview</a></li>
-        <li><a href="#simulator" class="nav-link">Live Simulator</a></li>
-        <li><a href="#articles" class="nav-link">Articles</a></li>
-      </ul>
-
-      <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" class="nav-cta">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-        </svg>
-        <span>GitHub</span>
-      </a>
     </nav>
-  </header>
+</header>
 
-  <!-- HERO -->
-  <main>
+<main>
+    <!-- HERO: THE ANALYST'S DIRECT PAIN -->
     <section class="hero">
-      <h1 class="hero-title">Don’t worry about your BI data hallucinations.</h1>
-      <p class="hero-subtitle">Use PBI Guard to test your data.</p>
-      <p class="hero-desc">Lock your verified DAX formulas in simple YAML. Catch silent formula drift in Git before it hits production, completely offline.</p>
-      <div class="hero-actions">
-        <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" class="btn-github-primary">Star on GitHub</a>
-        <a href="#simulator" class="btn-scroll-sim">Try Live Simulation ↓</a>
-      </div>
+        <h1 class="hero-title">Don't spend hours catching errors.<br/>One click and you know what broke.</h1>
+        <p class="hero-desc">Dashboard numbers suddenly wrong? Spot the exact modified formula across 50+ measures in 30ms.</p>
+        <div class="hero-actions">
+            <a href="https://github.com/Patens-dev/pbi-guard/releases" target="_blank" class="btn-github-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                <span>Download Free .zip</span>
+            </a>
+            <a href="#simulator" class="btn-scroll-sim">Try 10-Second Simulation ↓</a>
+        </div>
     </section>
 
-    <!-- LIVE SIMULATOR -->
-    <section class="sim-section" id="simulator">
-      <div class="sim-card">
-        <div class="sim-toolbar">
-          <div class="sim-tabs-group">
-            <button class="sim-tab active" id="tabBtnTmdl">1. Financials.tmdl</button>
-            <button class="sim-tab" id="tabBtnYaml">2. pbi-guard.yaml</button>
-          </div>
-          <span style="font-size: 11.5px; color: var(--text-muted);">AST Contract Verification Engine</span>
+    <!-- 3-STEP REAL-WORLD WORKFLOW -->
+    <section class="simple-steps-grid" id="how-it-works">
+        <div class="simple-step-card">
+            <span class="step-badge-num">1</span>
+            <h3 class="step-badge-title">Freeze the Good Version</h3>
+            <p class="step-badge-desc">When your report numbers match your expectations, click <strong>"Freeze Baseline"</strong>. PBI Guard locks your verified formulas as the source of truth.</p>
         </div>
 
-        <div class="sim-body-grid">
-          <div class="editor-pane" id="editorView"></div>
-          <div class="terminal-container">
-            <div class="terminal-overlay" id="termOverlay">
-              <button class="btn-run-centered" id="btnRunGuard">Run PBI Guard</button>
-              <p class="overlay-hint">Tests the raw TMDL definition against the YAML contract offline.</p>
-            </div>
-            <div class="terminal-pane blurred" id="termPane">
-              <div>
-                <div class="term-meta">
-                  <span>PRE-COMMIT AUDIT GATE</span>
-                  <span class="term-status-badge status-blocked" id="termBadge">PR BLOCKED</span>
+        <div class="simple-step-card">
+            <span class="step-badge-num">2</span>
+            <h3 class="step-badge-title">Someone Touches the Model</h3>
+            <p class="step-badge-desc">Colleagues edit measures, you refactor code, or updates are made. A calculation gets modified and the report totals look wrong.</p>
+        </div>
+
+        <div class="simple-step-card">
+            <span class="step-badge-num">3</span>
+            <h3 class="step-badge-title">One Click: Diagnosis</h3>
+            <p class="step-badge-desc">Hit save or open PBI Guard. It scans all 50+ measures in 30ms, highlights the exact formula that changed, and lets you fix it.</p>
+        </div>
+    </section>
+
+    <!-- THE RECONCILIATION SIMULATOR -->
+    <section class="sim-section" id="simulator" style="margin-top: 0;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span class="section-eyebrow">Interactive Demo</span>
+            <h2 style="font-family: var(--font-serif); font-size: 28px; font-weight: 500; color: var(--text-main);">From "Where Do I Start?" to Solved in 1 Click</h2>
+        </div>
+
+        <div class="reconcile-card">
+            <!-- Top Status Bar -->
+            <div class="sim-top-banner">
+                <div>
+                    <strong id="simStatusHeadline" style="color: #9f1239;">Executive Report Failing Validation</strong>
                 </div>
-                <div class="term-logs" id="terminalLogs"></div>
-              </div>
-              <div class="term-action-box" id="termActionBox"></div>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">Workspace: Financials.pbip (48 Measures)</span>
             </div>
-          </div>
+
+            <div class="sim-canvas">
+                <!-- POWER BI MOCKUP -->
+                <div class="pbi-dashboard-mockup">
+                    <div class="pbi-window-bar">
+                        <span class="pbi-window-title">
+                            <span style="color:#d97706;">📊</span> Power BI Desktop - Executive Summary
+                        </span>
+                        <span>Page 1 of 4 • Local Model</span>
+                    </div>
+
+                    <div class="pbi-cards-grid">
+                        <div class="pbi-metric-card">
+                            <span class="pbi-metric-label">Total Revenue</span>
+                            <span class="pbi-metric-value">$1,240,000</span>
+                        </div>
+
+                        <div class="pbi-metric-card">
+                            <span class="pbi-metric-label">Gross Profit</span>
+                            <span class="pbi-metric-value">$300,000</span>
+                        </div>
+
+                        <div class="pbi-metric-card broken" id="brokenCardVisual">
+                            <span class="pbi-error-bubble" id="pbiBadge">WRONG VALUE</span>
+                            <span class="pbi-metric-label">Gross Margin %</span>
+                            <span class="pbi-metric-value" id="cardValMargin">8.1%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ANALYST THOUGHT BOX -->
+                <div class="analyst-thought-box" id="analystThoughtBox">
+                    <span style="font-size: 20px;" id="thoughtIcon">🤔</span>
+                    <div>
+                        <strong id="thoughtHeader">"Wait... Gross Margin % should be 24.2%, but it says 8.1%!"</strong>
+                        <div style="margin-top: 2px;" id="thoughtText">
+                            This should be 24.2% but is 8.1%. We have 48 measures across 7 tables... where do I even start looking by hand?
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHECKPOINT PANEL (SHOWCASES SUITE OF FEATURES) -->
+                <div class="checkpoint-panel" id="checkpointPanel" style="display: none;">
+                    <div class="checkpoint-header">
+                        <div>
+                            <span class="checkpoint-badge">🛡️ PBI Guard Active Checkpoint</span>
+                            <span style="font-size: 12px; color: #64748b; margin-left: 8px;">Full AST Audit against verified baseline</span>
+                        </div>
+                        <span style="font-size: 11px; font-family: var(--font-mono); color: #dc2626; font-weight: 700;"
+                              id="checkpointScanResult">1 Discrepancy Found in 31ms</span>
+                    </div>
+
+                    <!-- Test Assertions Run (Feature Showcase) -->
+                    <div class="test-rows-mini">
+                        <div class="test-row-item">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="feat-tag feat-gov">COLUMN FORMAT</span>
+                                <span>Column <code>financials[Year]</code> formatted &amp; <code>summarize_by: none</code></span>
+                            </div>
+                            <span class="test-tag pass">PASSED</span>
+                        </div>
+
+                        <div class="test-row-item">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="feat-tag feat-policy">COMPLIANCE TEST</span>
+                                <span>Mandatory <code>DIVIDE()</code> &amp; zero hardcoded numeric multipliers</span>
+                            </div>
+                            <span class="test-tag pass">PASSED (47/47)</span>
+                        </div>
+
+                        <div class="test-row-item">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="feat-tag feat-arch">STORAGE &amp; ARCH</span>
+                                <span>0 uncompressed calculated columns &amp; no auto date bloat</span>
+                            </div>
+                            <span class="test-tag pass">PASSED</span>
+                        </div>
+
+                        <div class="test-row-item">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="feat-tag feat-meas">MEASURE CONTRACT</span>
+                                <span>Measure <code>[Total Revenue]</code> currency format (<code>$#,##0</code>)</span>
+                            </div>
+                            <span class="test-tag pass">PASSED</span>
+                        </div>
+
+                        <div class="test-row-item fail">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="feat-tag feat-breach">BASELINE DRIFT</span>
+                                <span style="font-weight: 700; color: #991b1b;">Measure <code>[Gross Margin %]</code> diverged from checkpoint</span>
+                            </div>
+                            <span class="test-tag fail">BREACH DETECTED</span>
+                        </div>
+                    </div>
+
+                    <!-- Side-by-Side Formula Diff -->
+                    <div class="diff-display-grid">
+                        <div class="formula-card before">
+                            <span class="formula-card-title">✓ Previous Checkpoint (Good Version)</span>
+                            <div class="formula-text">DIVIDE([Gross Profit], [Total Sales], 0)</div>
+                        </div>
+
+                        <div class="formula-card after">
+                            <span class="formula-card-title">✗ Current Detected in Power BI</span>
+                            <div class="formula-text">DIVIDE([Gross Profit], <span
+                                    class="highlight-broken">[Total COGS]</span>, 0)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACTION FOOTER -->
+                <div class="sim-footer-row">
+                    <div>
+                        <span id="stepHelpText" style="font-size: 12.5px; color: var(--text-muted);">
+                            Step 1: Check your last working PBI Guard checkpoint
+                        </span>
+                    </div>
+                    <button class="btn-reconcile-action" id="btnSimAction" onclick="advanceSimulation()">
+                        <span>⚡</span> <span id="btnSimActionText">Check with PBI Guard!</span>
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
     </section>
 
-    <!-- ARTICLES LIST (Points to real HTML files) -->
+    <!-- ARTICLES & GUIDES (MATCHES /articles FOLDER) -->
     <section class="articles-grid" id="articles">
-      <div style="text-align: center; margin-bottom: 20px;">
-        <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6366f1;">From the Blog</span>
-        <h2 style="font-family: var(--font-serif); font-size: 32px; font-weight: 500; margin-top: 6px;">Articles & Guides</h2>
-      </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span class="section-eyebrow">From the Blog</span>
+            <h2 style="font-family: var(--font-serif); font-size: 32px; font-weight: 500; margin-top: 6px;">Articles & Technical Guides</h2>
+        </div>
 
-      <!-- Card 3: Interactive Guide -->
-      <a href="articles/article-03.html" class="article-row-card">
-        <span class="article-tag">Agentic Workflows</span>
-        <h3 class="article-title">How to Use AI to Handle Power BI (Interactive Guide)</h3>
-        <p class="article-snippet">Step-by-step interactive setup: use VS Code and GitHub Copilot to generate entire Power BI models without touching the desktop GUI.</p>
-        <div class="article-meta"><span>5 min read</span> • <span>Interactive Guide</span></div>
-      </a>
+        <a href="articles/article-03.html" class="article-row-card">
+            <span class="article-tag">Agentic Workflows</span>
+            <h3 class="article-title">How to Use AI to Handle Power BI (Interactive Guide)</h3>
+            <p class="article-snippet">Step-by-step interactive setup: use VS Code and GitHub Copilot to generate entire Power BI models without touching the desktop GUI.</p>
+            <div class="article-meta"><span>5 min read</span> • <span>Interactive Guide</span></div>
+        </a>
 
-      <!-- Card 1: Why test -->
-      <a href="articles/article-01.html" class="article-row-card">
-        <span class="article-tag">Architecture</span>
-        <h3 class="article-title">Why Excel Eyeballing Still Dominates Enterprise BI</h3>
-        <p class="article-snippet">Despite decades of CI/CD, finance teams still dump data to Excel for manual VLOOKUP reconciliations. Here is the architectural reason why.</p>
-        <div class="article-meta"><span>6 min read</span> • <span>Technical Architecture</span></div>
-      </a>
-
-      <!-- Card 2: Hook -->
-      <a href="articles/article-02.html" class="article-row-card">
-        <span class="article-tag">Best Practices</span>
-        <h3 class="article-title">How to Set Up a Zero-Compute Git Pre-Commit Hook</h3>
-        <p class="article-snippet">Run PBI Guard inside your local Git repository in under 50ms without setting up Azure credentials or cloud compute capacity.</p>
-        <div class="article-meta"><span>4 min read</span> • <span>CI/CD Tutorial</span></div>
-      </a>
+        <a href="articles/article-01.html" class="article-row-card">
+            <span class="article-tag">Architecture</span>
+            <h3 class="article-title">Why Excel Eyeballing Still Dominates Enterprise BI</h3>
+            <p class="article-snippet">Despite decades of CI/CD, finance teams still dump data to Excel for manual VLOOKUP reconciliations. Here is the architectural reason why.</p>
+            <div class="article-meta"><span>6 min read</span> • <span>Technical Architecture</span></div>
+        </a>
     </section>
-  </main>
 
-  <footer>
-    <div class="footer-inner">
-      <div style="font-weight: 700; color: var(--text-main);">PBI Guard Project</div>
-      <div>Open-source business logic firewall for Power BI and Fabric.</div>
-      <a href="https://github.com/Patens-dev/pbi-guard" target="_blank" style="color: inherit; text-decoration: underline;">GitHub Repository</a>
+    <!-- EDITIONS (COMMUNITY FREE & TEAM LICENSE) -->
+    <section class="editions-section" id="editions">
+        <div class="section-header">
+            <span class="section-eyebrow">Editions</span>
+            <h2 class="section-title">Free for individual analysts. Built for teams.</h2>
+            <p class="section-desc">Download the desktop app for free to protect your own models. Get team licenses when
+                multiple people touch the same reports.</p>
+        </div>
+
+        <div class="editions-grid">
+            <!-- TIER 1: COMMUNITY -->
+            <div class="edition-card">
+                <div class="edition-badge">Open Source Desktop</div>
+                <h3 class="edition-name">Community</h3>
+                <p class="edition-tagline">For individual analysts who want to protect their own Power BI reports from
+                    accidental breakage.</p>
+
+                <div class="edition-price">
+                    <span class="price-val">$0</span>
+                    <span class="price-term">/ forever (Free)</span>
+                </div>
+
+                <ul class="edition-features">
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>One-click baseline freeze:</strong> Lock working formulas in 1 click</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Instant drift pinpointing:</strong> Highlights modified formulas on save</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Side-by-side formula diff:</strong> Shows before/after formula changes</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>External Tools ribbon button:</strong> Launch directly from Power BI</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>100% offline &amp; private:</strong> Zero data leaves your machine</span>
+                    </li>
+                </ul>
+
+                <a href="https://github.com/Patens-dev/pbi-guard/releases" target="_blank"
+                   class="btn-edition btn-edition-secondary">
+                    Download Free .zip →
+                </a>
+            </div>
+
+            <!-- TIER 2: TEAM / ENTERPRISE -->
+            <div class="edition-card edition-featured">
+                <div class="edition-badge badge-enterprise">Team Governance</div>
+                <h3 class="edition-name">Team &amp; Enterprise</h3>
+                <p class="edition-tagline">When multiple analysts, contractors, and departments edit shared Power BI
+                    semantic models.</p>
+
+                <div class="edition-price">
+                    <span class="price-val">Custom</span>
+                    <span class="price-term">/ team deployment</span>
+                </div>
+
+                <ul class="edition-features">
+                    <li>
+                        <svg class="check-icon text-indigo" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Everything in Community</strong>, plus:</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon text-indigo" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Centralized certified baselines:</strong> Share verified baselines across team members</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon text-indigo" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Organization-wide policy enforcement:</strong> Ban magic multipliers across all reports</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon text-indigo" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Audit reports for leadership:</strong> One-click documentation proving zero calculation drift</span>
+                    </li>
+                    <li>
+                        <svg class="check-icon text-indigo" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Direct engineering support:</strong> Setup guidance and custom rule assistance</span>
+                    </li>
+                </ul>
+
+                <button class="btn-edition btn-edition-primary" onclick="openEnterpriseModal()">
+                    Contact for Team License →
+                </button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- TEAM INQUIRY MODAL -->
+<div id="enterpriseModal" class="modal-overlay" onclick="if(event.target===this)closeEnterpriseModal();">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div>
+                <span class="section-eyebrow" style="font-size: 10.5px;">Team Deployment</span>
+                <h3 style="font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--text-main); margin-top: 2px;">
+                    Inquire About Team Licenses</h3>
+            </div>
+            <button class="btn-close-modal" onclick="closeEnterpriseModal()">✕</button>
+        </div>
+
+        <form id="enterpriseContactForm" class="modal-body-form" onsubmit="handleEnterpriseSubmit(event)">
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px;">
+                Equip your analytics team with shared baseline verification and stop accidental calculation breakage
+                across company workspaces.
+            </p>
+
+            <div class="form-field">
+                <label class="form-label" for="workEmail">Work Email *</label>
+                <input type="email" id="workEmail" class="modal-input" placeholder="alex@company.com" required/>
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-field">
+                    <label class="form-label" for="fullName">Your Name *</label>
+                    <input type="text" id="fullName" class="modal-input" placeholder="Alex Taylor" required/>
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="companyName">Company Name *</label>
+                    <input type="text" id="companyName" class="modal-input" placeholder="Acme Corp" required/>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label" for="teamSize">Number of Power BI Developers</label>
+                <select id="teamSize" class="modal-select">
+                    <option value="2-5">2 – 5 analysts</option>
+                    <option value="6-15">6 – 15 analysts</option>
+                    <option value="15+">15+ analysts</option>
+                </select>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+                <button type="button" class="btn-cancel" onclick="closeEnterpriseModal()">Cancel</button>
+                <button type="submit" class="btn-submit-enterprise" id="btnSubmitEnterprise">Send Inquiry →</button>
+            </div>
+        </form>
+
+        <div id="enterpriseSuccessState" class="modal-success-pane" style="display: none;">
+            <div class="success-icon">✓</div>
+            <h4 style="font-family: var(--font-serif); font-size: 22px; color: var(--text-main);">Inquiry Received</h4>
+            <p style="font-size: 13.5px; color: var(--text-muted); max-width: 400px; margin: 8px auto 20px;">
+                We will get back to <strong id="successEmailTarget" style="color:var(--text-main);"></strong> within 1
+                business day with setup options for your team.
+            </p>
+            <button class="btn-github-primary" onclick="closeEnterpriseModal()"
+                    style="font-size: 13px; padding: 9px 22px;">Close
+            </button>
+        </div>
     </div>
-  </footer>
+</div>
 
-  <script>
-    // NAVBAR HIDE ON SCROLL
-    let lastScrollY = window.scrollY;
-    const navWrapper = document.getElementById('navWrapper');
-    window.addEventListener('scroll', () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 60) {
-        navWrapper.classList.add('nav-hidden');
-      } else {
-        navWrapper.classList.remove('nav-hidden');
-      }
-      lastScrollY = currentScrollY;
-    }, { passive: true });
+<footer>
+    <div class="footer-inner">
+        <div>
+            <div style="font-weight: 700; color: var(--text-main); font-size: 14px;">PBI Guard Project</div>
+            <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">Offline formula change tracker
+                and firewall for Power BI Desktop (.pbip).
+            </div>
+        </div>
+        <div style="display: flex; gap: 20px; align-items: center; font-size: 13px;">
+            <a href="https://github.com/Patens-dev/pbi-guard" target="_blank"
+               style="color: inherit; text-decoration: none; font-weight: 600;">GitHub</a>
+            <button class="btn-nav-enterprise" onclick="openEnterpriseModal()"
+                    style="font-size: 12px; padding: 5px 12px;">Team Licenses
+            </button>
+        </div>
+    </div>
+</footer>
 
-    // SIMULATOR LOGIC
-    const simState = { isFixed: false, currentTab: 'tmdl' };
-    const editorView = document.getElementById('editorView');
-    const termOverlay = document.getElementById('termOverlay');
-    const termPane = document.getElementById('termPane');
-    const terminalLogs = document.getElementById('terminalLogs');
-    const termBadge = document.getElementById('termBadge');
-    const termActionBox = document.getElementById('termActionBox');
-    const btnRunGuard = document.getElementById('btnRunGuard');
-    const tabBtnTmdl = document.getElementById('tabBtnTmdl');
-    const tabBtnYaml = document.getElementById('tabBtnYaml');
+<script>
+    // SIMULATION STATE MACHINE (PROBLEM EXPERIENCED -> PBI GUARD CHECKPOINT -> RESOLUTION)
+    let simStage = 0;
 
-    function getTmdlLines(isFixed) {
-      if (!isFixed) {
-        return [
-          { no: 1, text: '<span class="kwd">table</span> Financials' },
-          { no: 2, text: '    <span class="kwd">lineageTag</span>: 4a9f-88b2-c100' },
-          { no: 3, text: '' },
-          { no: 4, text: '    <span class="cmt">// Base Metric</span>' },
-          { no: 5, text: '    <span class="kwd">measure</span> <span class="prop">\'Gross Profit\'</span> = [Total Sales] - [Total COGS]' },
-          { no: 6, text: '        <span class="kwd">formatString</span>: <span class="str">"$#,##0"</span>' },
-          { no: 7, text: '        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>' },
-          { no: 8, text: '' },
-          { no: 9, text: '    <span class="cmt">// Silent drift injected (* 1.05)</span>' },
-          { no: 10, alert: true, text: '    <span class="kwd">measure</span> <span class="prop">\'Gross Margin %\'</span> = DIVIDE([Gross Profit], [Total Sales], 0) * 1.05' },
-          { no: 11, text: '        <span class="kwd">formatString</span>: <span class="str">"0.0%"</span>' },
-          { no: 12, text: '        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>' }
-        ];
-      }
-      return [
-        { no: 1, text: '<span class="kwd">table</span> Financials' },
-        { no: 2, text: '    <span class="kwd">lineageTag</span>: 4a9f-88b2-c100' },
-        { no: 3, text: '' },
-        { no: 4, text: '    <span class="cmt">// Base Metric</span>' },
-        { no: 5, text: '    <span class="kwd">measure</span> <span class="prop">\'Gross Profit\'</span> = [Total Sales] - [Total COGS]' },
-        { no: 6, text: '        <span class="kwd">formatString</span>: <span class="str">"$#,##0"</span>' },
-        { no: 7, text: '        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>' },
-        { no: 8, text: '' },
-        { no: 9, text: '    <span class="cmt">// Reconciled formula</span>' },
-        { no: 10, text: '    <span class="kwd">measure</span> <span class="prop">\'Gross Margin %\'</span> = DIVIDE([Gross Profit], [Total Sales], 0)' },
-        { no: 11, text: '        <span class="kwd">formatString</span>: <span class="str">"0.0%"</span>' },
-        { no: 12, text: '        <span class="kwd">displayFolder</span>: <span class="str">"Executive KPIs"</span>' }
-      ];
+    function advanceSimulation() {
+        const headline = document.getElementById('simStatusHeadline');
+        const brokenCard = document.getElementById('brokenCardVisual');
+        const pbiBadge = document.getElementById('pbiBadge');
+        const cardVal = document.getElementById('cardValMargin');
+
+        const thoughtBox = document.getElementById('analystThoughtBox');
+        const thoughtIcon = document.getElementById('thoughtIcon');
+        const thoughtHeader = document.getElementById('thoughtHeader');
+        const thoughtText = document.getElementById('thoughtText');
+
+        const checkpointPanel = document.getElementById('checkpointPanel');
+        const btn = document.getElementById('btnSimAction');
+        const btnText = document.getElementById('btnSimActionText');
+        const help = document.getElementById('stepHelpText');
+
+        if (simStage === 0) {
+            // STEP 1: OPEN CHECKPOINT & TESTS
+            headline.innerText = "🔍 PBI Guard Checkpoint Loaded (31ms Scan)";
+            headline.style.color = "#4338ca";
+
+            thoughtBox.className = "analyst-thought-box checkpoint-found";
+            thoughtIcon.innerText = "💡";
+            thoughtHeader.innerText = "Found it! Checkpoint shows exactly what changed:";
+            thoughtText.innerHTML = "All columns, formatting, and compliance checks passed. <strong>Only [Gross Margin %] broke</strong> because someone swapped <code>[Total Sales]</code> with <code>[Total COGS]</code> in the denominator.";
+
+            checkpointPanel.style.display = "flex";
+
+            btn.className = "btn-reconcile-action restore-btn";
+            btnText.innerText = "Restore Checkpoint Formula (1 Click)";
+            help.innerText = "Step 2: Revert to the verified formula from your checkpoint";
+            simStage = 1;
+
+        } else if (simStage === 1) {
+            // STEP 2: RESTORE TO FROZEN BASELINE & UPDATE VISUALS
+            headline.innerText = "✓ Dashboard Clean: Margin Restored to 24.2%";
+            headline.style.color = "#059669";
+
+            brokenCard.className = "pbi-metric-card fixed-good";
+            pbiBadge.style.display = "none";
+            cardVal.innerText = "24.2%";
+
+            thoughtBox.className = "analyst-thought-box success";
+            thoughtIcon.innerText = "🎉";
+            thoughtHeader.innerText = "Problem Solved in 30 Seconds!";
+            thoughtText.innerHTML = "Gross Margin % is back to 24.2%. Column formats, compliance rules, and formula contracts are all 100% verified. Zero hours wasted.";
+
+            checkpointPanel.style.display = "none";
+
+            btn.className = "btn-reconcile-action";
+            btnText.innerText = "↺ Try Simulation Again";
+            help.innerText = "Demo complete! Reset to experience the scenario again:";
+            simStage = 2;
+
+        } else {
+            // RESET TO INITIAL PROBLEM STATE
+            headline.innerText = "Executive Report Failing Validation";
+            headline.style.color = "#9f1239";
+
+            brokenCard.className = "pbi-metric-card broken";
+            pbiBadge.style.display = "block";
+            pbiBadge.innerText = "WRONG VALUE";
+            cardVal.innerText = "8.1%";
+
+            thoughtBox.className = "analyst-thought-box";
+            thoughtIcon.innerText = "🤔";
+            thoughtHeader.innerText = '"Wait... Gross Margin % should be 24.2%, but it says 8.1%!"';
+            thoughtText.innerText = "This should be 24.2% but is 8.1%. We have 48 measures across 7 tables... where do I even start looking by hand?";
+
+            checkpointPanel.style.display = "none";
+
+            btn.className = "btn-reconcile-action";
+            btnText.innerText = '"Wait, I have PBI Guard checkpoints!" (Check)';
+            help.innerText = "Step 1: Check your last working PBI Guard checkpoint";
+            simStage = 0;
+        }
     }
 
-    const yamlLines = [
-      { no: 1, text: '<span class="cmt"># pbi-guard.yaml</span>' },
-      { no: 2, text: '<span class="kwd">version</span>: <span class="val">1</span>' },
-      { no: 3, text: '' },
-      { no: 4, text: '<span class="kwd">contracts</span>:' },
-      { no: 5, text: '  - <span class="prop">measure</span>: <span class="str">"[Gross Margin %]"</span>' },
-      { no: 6, text: '    <span class="prop">table</span>: <span class="str">"Financials"</span>' },
-      { no: 7, text: '    <span class="prop">status</span>: <span class="val">certified</span>' },
-      { no: 8, text: '    <span class="prop">must_equal</span>: <span class="str">"DIVIDE([Gross Profit], [Total Sales], 0)"</span>' },
-      { no: 9, text: '    <span class="prop">forbid_patterns</span>:' },
-      { no: 10, text: '      - <span class="str">"* 1."</span>   <span class="cmt"># Disallows fudge factor multipliers</span>' },
-      { no: 11, text: '      - <span class="str">"+ "</span>     <span class="cmt"># Disallows manual plug values</span>' }
-    ];
-
-    function renderEditor() {
-      const lines = simState.currentTab === 'tmdl' ? getTmdlLines(simState.isFixed) : yamlLines;
-      let html = '';
-      lines.forEach(l => {
-        const alertClass = l.alert ? 'line-drift-alert' : '';
-        html += `<div class="code-gutter-line ${alertClass}"><span class="line-no">${l.no}</span><span class="line-text">${l.text}</span></div>`;
-      });
-      editorView.innerHTML = html;
+    // ENTERPRISE MODAL LOGIC
+    function openEnterpriseModal() {
+        document.getElementById('enterpriseModal').style.display = 'flex';
+        document.getElementById('enterpriseContactForm').style.display = 'flex';
+        document.getElementById('enterpriseSuccessState').style.display = 'none';
+        setTimeout(() => document.getElementById('workEmail').focus(), 100);
     }
 
-    function renderTerminal() {
-      if (!simState.isFixed) {
-        termBadge.className = 'term-status-badge status-blocked';
-        termBadge.innerText = 'FAIL (CONTRACT BREACH)';
-        terminalLogs.innerHTML = `
-          <div class="log-entry"><span class="log-dim">$</span> <span>pbi-guard check ./semantic-model</span></div>
-          <div class="log-entry"><span class="log-dim">>></span> <span>Parsing 12 TMDL definitions in 41ms...</span></div>
-          <div class="log-entry" style="margin-top:4px;"><span class="log-err">[FAIL]</span> <span>You have this error:</span></div>
-          <div style="color:#cbd5e1; font-size:11.5px; padding-left: 16px; border-left: 2px solid #ef4444; margin: 4px 0 8px 8px;">
-            Target: <code>Financials['Gross Margin %']</code><br/>
-            Contract Breached: Forbidden multiplier <span style="color:#f87171;">"* 1.05"</span> detected.<br/>
-            Expected: <code>DIVIDE([Gross Profit], [Total Sales], 0)</code>
-          </div>
-          <div class="log-entry"><span class="log-err">ERROR:</span> <span>Pull Request #42 blocked. Formulas do not match YAML.</span></div>
-        `;
-        termActionBox.className = 'term-action-box';
-        termActionBox.innerHTML = `
-          <div style="font-size:11.5px; color:#cbd5e1;"><strong style="color:#ffffff;">Action Required:</strong> Revert the unauthorized multiplier to match the certified YAML baseline.</div>
-          <button class="btn-fix-action" id="btnFixFormula">Fix Drift & Re-run</button>
-        `;
-        document.getElementById('btnFixFormula').addEventListener('click', () => {
-          simState.isFixed = true;
-          simState.currentTab = 'tmdl';
-          tabBtnTmdl.classList.add('active');
-          tabBtnYaml.classList.remove('active');
-          renderEditor();
-          terminalLogs.innerHTML = `<div class="log-entry"><span class="log-dim">$</span> <span>Formula updated. Re-evaluating AST contract...</span></div>`;
-          setTimeout(renderTerminal, 200);
-        });
-      } else {
-        termBadge.className = 'term-status-badge status-passed';
-        termBadge.innerText = 'PASSED (100% VERIFIED)';
-        terminalLogs.innerHTML = `
-          <div class="log-entry"><span class="log-dim">$</span> <span>pbi-guard check ./semantic-model</span></div>
-          <div class="log-entry"><span class="log-dim">>></span> <span>Parsing 12 TMDL definitions in 37ms...</span></div>
-          <div class="log-entry"><span class="log-ok">[PASS]</span> <span>Financials['Gross Profit'] (Certified)</span></div>
-          <div class="log-entry"><span class="log-ok">[PASS]</span> <span>Financials['Gross Margin %'] (Contract Verified)</span></div>
-          <div class="log-entry" style="margin-top:6px;"><span class="log-ok">SUCCESS:</span> <span>All 48 formulas match certified contracts. Safe to merge!</span></div>
-        `;
-        termActionBox.className = 'term-action-box box-passed';
-        termActionBox.innerHTML = `
-          <div style="font-size:11.5px; color:#cbd5e1;"><strong style="color:#ffffff;">Model Safe:</strong> Zero drift detected. The CI/CD pipeline approved this Pull Request.</div>
-          <button class="btn-reset-sim" id="btnResetSimulation">↺ Reset Simulation to Test Again</button>
-        `;
-        document.getElementById('btnResetSimulation').addEventListener('click', () => {
-          simState.isFixed = false;
-          simState.currentTab = 'tmdl';
-          tabBtnTmdl.classList.add('active');
-          tabBtnYaml.classList.remove('active');
-          termOverlay.classList.remove('hidden');
-          termPane.classList.add('blurred');
-          renderEditor();
-        });
-      }
+    function closeEnterpriseModal() {
+        document.getElementById('enterpriseModal').style.display = 'none';
     }
 
-    btnRunGuard.addEventListener('click', () => {
-      termOverlay.classList.add('hidden');
-      termPane.classList.remove('blurred');
-      renderTerminal();
-    });
+    function handleEnterpriseSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('workEmail').value;
+      const btn = document.getElementById('btnSubmitEnterprise');
+      btn.innerText = 'Sending...';
+      btn.disabled = true;
 
-    tabBtnTmdl.addEventListener('click', () => {
-      simState.currentTab = 'tmdl';
-      tabBtnTmdl.classList.add('active');
-      tabBtnYaml.classList.remove('active');
-      renderEditor();
-    });
-
-    tabBtnYaml.addEventListener('click', () => {
-      simState.currentTab = 'yaml';
-      tabBtnYaml.classList.add('active');
-      tabBtnTmdl.classList.remove('active');
-      renderEditor();
-    });
-
-    renderEditor();
-  </script>
+      setTimeout(() => {
+          btn.innerText = 'Send Inquiry →';
+          btn.disabled = false;
+          document.getElementById('enterpriseContactForm').style.display = 'none';
+          document.getElementById('enterpriseSuccessState').style.display = 'flex';
+          document.getElementById('successEmailTarget').innerText = email;
+      }, 500);
+    }
+</script>
 </body>
 </html>
