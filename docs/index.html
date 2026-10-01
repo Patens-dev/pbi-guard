@@ -1000,38 +1000,56 @@
     }
 
     function handleEnterpriseSubmit(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
+
+        const email = document.getElementById('workEmail').value.trim();
+        const name = document.getElementById('fullName').value.trim();
+        const company = document.getElementById('companyName').value.trim();
+        const teamSize = document.getElementById('teamSize').value;
+
+        // JavaScript validation
+        if (!email || !email.includes('@')) {
+            alert("Please enter a valid work email.");
+            document.getElementById('workEmail').focus();
+            return;
+        }
+        if (!name) {
+            alert("Please enter your name.");
+            document.getElementById('fullName').focus();
+            return;
+        }
+        if (!company) {
+            alert("Please enter your company name.");
+            document.getElementById('companyName').focus();
+            return;
+        }
 
         const btn = document.getElementById('btnSubmitEnterprise');
         btn.innerText = 'Sending...';
         btn.disabled = true;
 
-        // Paste your Google Apps Script Web App URL here
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxI8QwowhwrkvMcZEVcucXM3axq3iYLGyVLckTpOa77uMNwCqBsSLyIhlIQn3Z7y-1f/exec";
 
-        const payload = {
-            email: document.getElementById('workEmail').value,
-            name: document.getElementById('fullName').value,
-            company: document.getElementById('companyName').value,
-            teamSize: document.getElementById('teamSize').value
-        };
+        const payload = {email, name, company, teamSize};
+        console.log("Dispatching payload to Google Apps Script:", payload);
 
         fetch(SCRIPT_URL, {
             method: "POST",
-            mode: "no-cors", // Required to handle Google Apps Script 302 redirects without browser CORS blocks
+            mode: "no-cors",
             headers: {
                 "Content-Type": "text/plain;charset=utf-8"
             },
             body: JSON.stringify(payload)
         })
             .then(() => {
+                console.log("Submission completed.");
                 document.getElementById('enterpriseContactForm').style.display = 'none';
                 document.getElementById('enterpriseSuccessState').style.display = 'flex';
-                document.getElementById('successEmailTarget').innerText = payload.email;
+                document.getElementById('successEmailTarget').innerText = email;
             })
             .catch((err) => {
-                alert("Failed to submit. Please contact us via GitHub issues.");
-                console.error(err);
+                console.error("Submission failed:", err);
+                alert("Network error. Please contact us directly via GitHub.");
             })
             .finally(() => {
                 btn.innerText = 'Send Inquiry →';
