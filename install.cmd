@@ -9,11 +9,11 @@ echo.
 
 :: 1. Verify Python availability
 where python >nul 2>nul
-if %errorlevel% neq 0 (
+if errorlevel 1 (
     echo [ERROR] Python is not installed or not in your PATH.
     echo.
-    echo Fix: Install Python 3.10+ from python.org or the Microsoft Store
-    echo (Microsoft Store version requires zero administrator rights).
+    echo Fix: Install Python 3.10+ from python.org or the Microsoft Store.
+    echo Note: The Microsoft Store version requires zero administrator rights.
     echo.
     pause
     exit /b 1
@@ -23,7 +23,7 @@ if %errorlevel% neq 0 (
 set "TARGET_DIR=%LOCALAPPDATA%\pbi-guard"
 echo [1/3] Copying files to %TARGET_DIR%...
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
-xcopy /s /e /y /q "%~dp0*" "%TARGET_DIR%\" >nul
+xcopy /s /e /y /q /i "%~dp0*" "%TARGET_DIR%\" >nul
 
 :: 3. Ensure required dependency is installed
 echo [2/3] Installing dependencies (pyyaml)...
