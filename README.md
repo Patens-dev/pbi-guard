@@ -27,7 +27,7 @@ Catch formula drift, unauthorized multipliers, and broken metrics in real time. 
    * It installs `pyyaml`, copies the app to `%LOCALAPPDATA%\pbi-guard`, and registers the External Tool ribbon button.
 3. Restart **Power BI Desktop**. PBI Guard will appear in the **External Tools** ribbon tab .
 4. *(Optional)* You can safely delete the downloaded `.zip` and extracted folder.
-
+![img.png](img.png)
 To remove PBI Guard later, double-click **`uninstall.cmd`** .
 
 ---
