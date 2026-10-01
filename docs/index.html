@@ -485,7 +485,8 @@
     <!-- HERO: THE ANALYST'S DIRECT PAIN -->
     <section class="hero">
         <h1 class="hero-title">Don't spend hours catching errors.<br/>One click and you know what broke.</h1>
-        <p class="hero-desc">Dashboard numbers suddenly wrong? Spot the exact modified formula across 50+ measures in 30ms.</p>
+        <p class="hero-desc">Dashboard numbers suddenly wrong? Spot the exact modified formula across 50+ measures in
+            30ms.</p>
         <div class="hero-actions">
             <a href="https://github.com/Patens-dev/pbi-guard/releases" target="_blank" class="btn-github-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -502,19 +503,22 @@
         <div class="simple-step-card">
             <span class="step-badge-num">1</span>
             <h3 class="step-badge-title">Freeze the Good Version</h3>
-            <p class="step-badge-desc">When your report numbers match your expectations, click <strong>"Freeze Baseline"</strong>. PBI Guard locks your verified formulas as the source of truth.</p>
+            <p class="step-badge-desc">When your report numbers match your expectations, click <strong>"Freeze
+                Baseline"</strong>. PBI Guard locks your verified formulas as the source of truth.</p>
         </div>
 
         <div class="simple-step-card">
             <span class="step-badge-num">2</span>
             <h3 class="step-badge-title">Someone Touches the Model</h3>
-            <p class="step-badge-desc">Colleagues edit measures, you refactor code, or updates are made. A calculation gets modified and the report totals look wrong.</p>
+            <p class="step-badge-desc">Colleagues edit measures, you refactor code, or updates are made. A calculation
+                gets modified and the report totals look wrong.</p>
         </div>
 
         <div class="simple-step-card">
             <span class="step-badge-num">3</span>
             <h3 class="step-badge-title">One Click: Diagnosis</h3>
-            <p class="step-badge-desc">Hit save or open PBI Guard. It scans all 50+ measures in 30ms, highlights the exact formula that changed, and lets you fix it.</p>
+            <p class="step-badge-desc">Hit save or open PBI Guard. It scans all 50+ measures in 30ms, highlights the
+                exact formula that changed, and lets you fix it.</p>
         </div>
     </section>
 
@@ -522,7 +526,8 @@
     <section class="sim-section" id="simulator" style="margin-top: 0;">
         <div style="text-align: center; margin-bottom: 20px;">
             <span class="section-eyebrow">Interactive Demo</span>
-            <h2 style="font-family: var(--font-serif); font-size: 28px; font-weight: 500; color: var(--text-main);">From "Where Do I Start?" to Solved in 1 Click</h2>
+            <h2 style="font-family: var(--font-serif); font-size: 28px; font-weight: 500; color: var(--text-main);">From
+                "Where Do I Start?" to Solved in 1 Click</h2>
         </div>
 
         <div class="reconcile-card">
@@ -569,7 +574,8 @@
                     <div>
                         <strong id="thoughtHeader">"Wait... Gross Margin % should be 24.2%, but it says 8.1%!"</strong>
                         <div style="margin-top: 2px;" id="thoughtText">
-                            This should be 24.2% but is 8.1%. We have 48 measures across 7 tables... where do I even start looking by hand?
+                            This should be 24.2% but is 8.1%. We have 48 measures across 7 tables... where do I even
+                            start looking by hand?
                         </div>
                     </div>
                 </div>
@@ -663,20 +669,23 @@
     <section class="articles-grid" id="articles">
         <div style="text-align: center; margin-bottom: 20px;">
             <span class="section-eyebrow">From the Blog</span>
-            <h2 style="font-family: var(--font-serif); font-size: 32px; font-weight: 500; margin-top: 6px;">Articles & Technical Guides</h2>
+            <h2 style="font-family: var(--font-serif); font-size: 32px; font-weight: 500; margin-top: 6px;">Articles &
+                Technical Guides</h2>
         </div>
 
         <a href="articles/article-03.html" class="article-row-card">
             <span class="article-tag">Agentic Workflows</span>
             <h3 class="article-title">How to Use AI to Handle Power BI (Interactive Guide)</h3>
-            <p class="article-snippet">Step-by-step interactive setup: use VS Code and GitHub Copilot to generate entire Power BI models without touching the desktop GUI.</p>
+            <p class="article-snippet">Step-by-step interactive setup: use VS Code and GitHub Copilot to generate entire
+                Power BI models without touching the desktop GUI.</p>
             <div class="article-meta"><span>5 min read</span> • <span>Interactive Guide</span></div>
         </a>
 
         <a href="articles/article-01.html" class="article-row-card">
             <span class="article-tag">Architecture</span>
             <h3 class="article-title">Why Excel Eyeballing Still Dominates Enterprise BI</h3>
-            <p class="article-snippet">Despite decades of CI/CD, finance teams still dump data to Excel for manual VLOOKUP reconciliations. Here is the architectural reason why.</p>
+            <p class="article-snippet">Despite decades of CI/CD, finance teams still dump data to Excel for manual
+                VLOOKUP reconciliations. Here is the architectural reason why.</p>
             <div class="article-meta"><span>6 min read</span> • <span>Technical Architecture</span></div>
         </a>
     </section>
@@ -991,19 +1000,43 @@
     }
 
     function handleEnterpriseSubmit(e) {
-      e.preventDefault();
-      const email = document.getElementById('workEmail').value;
-      const btn = document.getElementById('btnSubmitEnterprise');
-      btn.innerText = 'Sending...';
-      btn.disabled = true;
+        e.preventDefault();
 
-      setTimeout(() => {
-          btn.innerText = 'Send Inquiry →';
-          btn.disabled = false;
-          document.getElementById('enterpriseContactForm').style.display = 'none';
-          document.getElementById('enterpriseSuccessState').style.display = 'flex';
-          document.getElementById('successEmailTarget').innerText = email;
-      }, 500);
+        const btn = document.getElementById('btnSubmitEnterprise');
+        btn.innerText = 'Sending...';
+        btn.disabled = true;
+
+        // Paste your Google Apps Script Web App URL here
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxI8QwowhwrkvMcZEVcucXM3axq3iYLGyVLckTpOa77uMNwCqBsSLyIhlIQn3Z7y-1f/exec";
+
+        const payload = {
+            email: document.getElementById('workEmail').value,
+            name: document.getElementById('fullName').value,
+            company: document.getElementById('companyName').value,
+            teamSize: document.getElementById('teamSize').value
+        };
+
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors", // Required to handle Google Apps Script 302 redirects without browser CORS blocks
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(() => {
+                document.getElementById('enterpriseContactForm').style.display = 'none';
+                document.getElementById('enterpriseSuccessState').style.display = 'flex';
+                document.getElementById('successEmailTarget').innerText = payload.email;
+            })
+            .catch((err) => {
+                alert("Failed to submit. Please contact us via GitHub issues.");
+                console.error(err);
+            })
+            .finally(() => {
+                btn.innerText = 'Send Inquiry →';
+                btn.disabled = false;
+            });
     }
 </script>
 </body>
